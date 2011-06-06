@@ -7,71 +7,28 @@
 
 "use strict";
 
-/**
- * Creates range stream that streams values from the given range.
- * @examples
- *    range(1, 3)(console.log)
- *    // 1
- *    // 2
- *    // 3
- */
-exports.range = function range(from, to) {
-  return function stream(next, stop) {
-    // While elements are in range we yield them.
-    while (from <= to) next(from ++)
-    // Once all elements are yielded we stop the stream if there is a listener
-    // for that.
-    if (stop) stop()
-  }
-}
 
 /**
- * Creates stream of given objects keys.
+ * Creates stream of given elements.
  * @examples
- *    keys({ a: 1, b: 2 })(console.log)
- *    // a
- *    // b
+ *    list('a', 2, {})(console.log)
  */
-exports.keys = function keys(object) {
-  return function stream(next, stop) {
-    for (var key in object) next(key)
-    if (stop) stop()
-  }
-}
-
-/**
- * Creates stream of values for the given object.
- * @examples
- *    values({ a: 1, b: 2 })(console.log)
- *    // 1
- *    // 2
- */
-exports.values = function values(object) {
-  return function stream(next, stop) {
-    for (var key in object) next(object[key])
-    if (stop) stop()
-  }
-}
-
-
-/**
- * Creates stream of array values.
- * @examples
- *    list([ 'a', 2, {} ])(console.log)
- */
-exports.list = function list(elements) {
+function list() {
+  var elements = Array.prototype.slice.call(arguments, 0)
   return function stream(next, stop) {
     elements.forEach(next)
     if (stop) stop()
   }
 }
+exports.list = list
 
-exports.enumerate = function enumerate(object) {
-  return function stream(next, stop) {
-    for (var key in object) next([ key, object[key] ])
-    if (stop) stop()
-  }
+/*
+ * Creates empty stream. This is equivalent of `list()`.
+ */
+exports.empty = function empty() {
+  return list()
 }
+
 
 /**
  * Returns stream of mapped values.
@@ -80,17 +37,26 @@ exports.enumerate = function enumerate(object) {
  * @param {Function} map
  *    function that maps each value
  * @examples
- *    var stream = list([ { name: 'foo' },  { name: 'bar' } ])
+ *    var stream = list({ name: 'foo' },  { name: 'bar' })
  *    var names = map(stream, function(value) { return value.name })
  *    names(console.log)
  *    // 'foo'
  *    // 'bar'
+ *    var numbers = list(1, 2, 3)
+ *    var mapped = map(numbers, function onEach(number) { return number * 2 })
+ *    mapped(console.log)
+ *    // 2
+ *    // 4
+ *    // 6
  */
-exports.map = function map(input, map) {
+function map(input, mapper) {
   return function stream(next, stop) {
-    input(function onValue(value) { next(map(value)) }, stop)
+    input(function onElement(element) {
+      next(mapper(element))
+    }, stop)
   }
 }
+exports.map = map
 
 /**
  * Returns stream of filtered values.
@@ -98,7 +64,7 @@ exports.map = function map(input, map) {
  *    source stream to be filtered
  * @param {Function} filter
  * @examples
- *    var numbers = list([ 10, 23, 2, 7, 17 ])
+ *    var numbers = list(10, 23, 2, 7, 17)
  *    var digits = filter(numbers, function(value) {
  *      return value >= 0 && value <= 9
  *    })
@@ -106,25 +72,44 @@ exports.map = function map(input, map) {
  *    // 2
  *    // 7
  */
-exports.filter = function filter(input, filter) {
+function filter(input, filterer) {
   return function stream(next, stop) {
-    input(function onValue(value) { if (filter(value)) next(value) }, stop)
+    input(function onElement(element) {
+      if (filterer(element)) next(element)
+    }, stop)
   }
 }
+exports.filter = filter
 
 /**
  * Returns stream of reduced values
+ * @param {Function} input
+ *    stream to reduce.
+ * @param {Function} reducer
+ *    reducer function
+ * @param initial
+ *    initial value
+ * @examples
+ *    var numbers = list(2, 3, 8)
+ *    var sum = reduce(numbers, function onElement(previous, current) {
+ *      return (previous || 0) + current
+ *    })
+ *    sum(console.log)
+ *    // 13
  */
-function reduce(source, reducer, initial) {
-  return function input(next, stop) {
-    var result = initial
-    input(function reduce(value) {
-      next(result = reducer(value, result))
-    }, function end(error) {
-      stop(error, result)
+function reduce(input, reducer, initial) {
+  return function stream(next, stop) {
+    var value = initial
+    input(function onElement(element) {
+      value = reducer(value, element)
+    }, function onStop(error) {
+      if (error) return stop(error)
+      next(value)
+      if (stop) stop()
     })
   }
 }
+exports.reduce = reduce
 
 /**
  * The zip function takes varied number of streams and returns a single stream
@@ -198,8 +183,6 @@ exports.limit = function limit(input, max) {
   }
 }
 
-exports.once = function once(input) {
-  return exports.limit(input, 1)
 }
 
 /**
