@@ -228,7 +228,7 @@ exports.print = function print(stream) {
  *    // 'a'
  *    // 'b'
  */
-exports.join = function join() {
+exports.append = function append() {
   var inputs = Array.prototype.slice.call(arguments)
   return function stream(next, stop) {
     var input
