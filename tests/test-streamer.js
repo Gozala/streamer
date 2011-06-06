@@ -7,7 +7,10 @@
 
 "use strict";
 
-
+exports['test list'] = require('./list.js')
+exports['test map'] = require('./map.js')
+exports['test filter'] = require('./filter.js')
+exports['test reduce'] = require('./reduce.js')
 
 if (module == require.main)
   require("test").run(exports);
