@@ -14,6 +14,8 @@ exports['test reduce'] = require('./reduce.js')
 exports['test zip'] = require('./zip.js')
 exports['test head'] = require('./head.js')
 exports['test tail'] = require('./tail.js')
+exports['test append'] = require('./append.js')
+
 
 if (module == require.main)
   require('test').run(exports);
