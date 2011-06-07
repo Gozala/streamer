@@ -193,19 +193,30 @@ var zip = exports.zip = (function Zip() {
   }
 })()
 
-exports.limit = function limit(input, max) {
+/**
+ * Returns a stream containing only first `number` of elements of the given
+ * `source` stream or all elements, if `source` stream has less than `number`
+ * of elements. If `number` is not passed it defaults to `1`.
+ * @param {Function} source
+ *    source stream
+ * @param {Number} number=1
+ *    number of elements to take from stream
+ */
+function head(source, number) {
   return function stream(next, stop) {
-    var limit = max
-    input(function onNext(value) {
-      // Already have reached limit
-      if (!limit) return false
-      if (--limit) next(value)
-      else stop()
+    var left = number || 1
+    source(function onElement(element) {
+      if (left-- <= 0) return null
+        next(element)
+        if (left <= 0 && stop) stop()
     }, function onStop(error) {
-      if (limit) stop(error)
+      if (left <= 0) return null
+      number = 0
+      stop(error)
     })
   }
 }
+exports.head = head
 
 }
 
