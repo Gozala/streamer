@@ -291,6 +291,7 @@ exports.merge = function merge(streams) {
  * Utility function to print streams.
  */
 exports.print = function print(stream) {
+  console.log('>>')
   stream(console.log.bind(console), function onStop(error) {
     if (error) console.error(error)
     else console.log('<<')
