@@ -13,6 +13,7 @@ exports['test filter'] = require('./filter.js')
 exports['test reduce'] = require('./reduce.js')
 exports['test zip'] = require('./zip.js')
 exports['test head'] = require('./head.js')
+exports['test tail'] = require('./tail.js')
 
 if (module == require.main)
   require("test").run(exports);
