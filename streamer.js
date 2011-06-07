@@ -232,7 +232,7 @@ function tail(source, number) {
   return function stream(next, stop) {
     var left = number || 1
     source(function onElement(element) {
-      if (left-- <= 0) return null
+      if (left-- > 0) return null
       next(element)
     }, stop)
   }
