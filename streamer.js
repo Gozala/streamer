@@ -112,8 +112,9 @@ function reduce(input, reducer, initial) {
 exports.reduce = reduce
 
 /**
- * The zip function takes varied number of streams and returns a single stream
- * where each value is the combination of all streams.
+ * This function returns stream of tuples, where the n-th tuple contains the
+ * n-th element from each of the argument streams. The returned stream is
+ * truncated in length to the length of the shortest argument stream.
  * @params {Function}
  *    source steams to be combined
  * @examples
@@ -126,48 +127,71 @@ exports.reduce = reduce
  *    // [ 'b', 2, '@' ]
  *    // [ 'c', 3, '#' ]
  */
-exports.zip = function zip() {
-  var inputs = Array.prototype.slice.call(arguments)
-  return function stream(next, stop) {
-    var values = [], ended = [], id
-    function isReady() {
-      var id = values.length
-      while (0 <= --id) { if (!values[id].length) return false }
-      return true
-    }
-    function isEnded() {
-      var id = ended.length
-      while (0 <= --id) { if (!ended[id]) return false }
-      return true
-    }
-    function shift() {
-      var id = values.length, value = []
-      while (0 <= --id) { value.unshift(values[id].shift()) }
-      return value
-    }
-    function end(id, error) {
-      ended[id] = true
-      if (error || isEnded()) {
-        values = ended = null
-        if (stop) stop(error)
-      }
-    }
-    function push(id, value) {
-      if (values) {
-        values[id].push(value)
-        if (isReady()) next(shift())
-      }
-    }
-
-    id = inputs.length
-    while (0 <= --id) {
-      values.push([])
-      ended.push(false)
-    }
-    id = values.length
-    while (0 <= --id) inputs[id](push.bind(null, id), end.bind(null, id))
+var zip = exports.zip = (function Zip() {
+  // Returns weather array is empty or not.
+  function isEmpty(array) { return !array.length }
+  // Utility function that check if each array in given array of arrays
+  // has at least one element (in which case we do have a tuple).
+  function hasTuple(array) { return !array.some(isEmpty) }
+  // Utility function that creates tuple by shifting element from each
+  // array of arrays.
+  function shiftTuple(array) {
+    var index = array.length, tuple = []
+    while (0 <= --index) tuple.unshift(array[index].shift())
+    return tuple
   }
-}
+
+  return function zip() {
+    var sources = Array.prototype.slice.call(arguments)
+    return function stream(next, stop) {
+      var buffers = [], id, reason, isStopped = false, shortest
+
+      function onElement(id, element) {
+        // If resulting stream is already stopped (we are in truncate mode) or
+        // if this stream is stopped (we deal with badly implemented stream that
+        // yields value after it's stopped) we ignore element.
+        if (isStopped) return null
+        // Otherwise we buffer an element.
+        buffers[id].push(element)
+        // If tuple is ready we yield it.
+        if (hasTuple(buffers)) next(shiftTuple(buffers))
+      }
+
+      function onStop(id, error) {
+        // If shortest stream was already stopped then we are in truncate mode
+        // which means we ignore all the following stream stops.
+        if (isStopped) return null
+        // If stream being stopped is the first one to be stopped or if it's
+        // shorter then the shortest one stopped, we update stop reason and
+        // shortest stopped stream reference.
+        if (!shortest || shortest.length > buffers[id].length) {
+          shortest = buffers[id]
+          reason = error
+        }
+        // If shortest stream has no buffered elements, we stop resulting stream
+        // & do some clean up.
+        if (!shortest.length) {
+          // Marking stream as stopped.
+          isStopped = true
+          // Stopping a stream.
+          stop(reason)
+          // Setting all closure captured elements to `null` so that gc can
+          // collect them.
+          buffers = shortest = null
+        }
+      }
+
+      // Initializing buffers.
+      id = sources.length
+      while (0 <= --id) buffers.push([])
+
+      // Start reading streams.
+      id = sources.length
+      while (0 <= --id)
+        sources[id](onElement.bind(null, id), onStop.bind(null, id))
+    }
+  }
+})()
 
 exports.limit = function limit(input, max) {
   return function stream(next, stop) {
