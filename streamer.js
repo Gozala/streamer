@@ -254,9 +254,9 @@ exports.tail = tail
  *    // 'b'
  */
 function append() {
-  var sources = Array.prototype.slice.call(arguments)
+  var streams = Array.prototype.slice.call(arguments, 0)
   return function stream(next, stop) {
-    var source
+    var source, sources = streams.slice(0)
     function onStop(error) {
       if (error) return stop && stop(error)
       if ((source = sources.shift())) source(next, onStop)
