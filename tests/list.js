@@ -5,10 +5,10 @@
 
 (typeof define === "undefined" ? function ($) { $(require, exports, module) } : define)(function (require, exports, module, undefined) {
 
-"use strict";
+'use strict';
 
-var list = require('../streamer').list
-var test = require('./utils').test
+var list = require('../streamer.js').list
+var test = require('./utils.js').test
 
 exports['test empty list'] = function(assert, done) {
   test(assert, done, list(), [])
@@ -26,7 +26,7 @@ exports['test mixed list'] = function(assert, done) {
 
 
 if (module == require.main)
-  require("test").run(exports);
+  require('test').run(exports);
 
 })
 

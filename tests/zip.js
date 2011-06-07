@@ -5,9 +5,9 @@
 
 (typeof define === "undefined" ? function ($) { $(require, exports, module) } : define)(function (require, exports, module, undefined) {
 
-"use strict";
+'use strict';
 
-var streamer = require('../streamer'),
+var streamer = require('../streamer.js'),
     zip = streamer.zip, list = streamer.list
 var test = require('./utils.js').test
 
@@ -15,7 +15,7 @@ exports['test zip with empty'] = function(assert, done) {
   var empty = list()
   var numbers = list(1, 2, 3)
   var zipped = zip(empty, numbers)
-  
+
   test(assert, done, zipped, [])
 }
 
@@ -52,7 +52,7 @@ exports['test zip with late error'] = function(assert, done) {
   function stream(next, stop) {
     var x = 3
     setTimeout(function onTimeout() {
-      if (!x) return stop(new Error("Boom!"))
+      if (!x) return stop(new Error('Boom!'))
       next(x--)
       setTimeout(onTimeout, 0)
     }, 0)
@@ -71,7 +71,7 @@ exports['test zip with early error'] = function(assert, done) {
   function stream(next, stop) {
     var x = 3
     setTimeout(function onTimeout() {
-      if (!x) return stop(new Error("Boom!"))
+      if (!x) return stop(new Error('Boom!'))
       next(x--)
       setTimeout(onTimeout, 0)
     }, 0)
@@ -87,11 +87,11 @@ exports['test zip with early error'] = function(assert, done) {
       [ 2, 'b' ],
       [ 1, 'c' ]
     ], 'Stream yielded all tuples in right order before error in source stream')
-    assert.equal(error.message, "Boom!", "Stream is stopped with error")
+    assert.equal(error.message, 'Boom!', 'Stream is stopped with error')
     done()
   })
 }
 if (module == require.main)
-  require("test").run(exports);
+  require('test').run(exports);
 
 })

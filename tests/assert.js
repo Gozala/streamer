@@ -5,15 +5,15 @@
 
 (typeof define === "undefined" ? function ($) { $(require, exports, module) } : define)(function (require, exports, module, undefined) {
 
-"use strict";
+'use strict';
 
-var Assert = require('test/assert').Assert
+var Assert = require('test/assert.js').Assert
 exports.Assert = function StreamAssert() {
   var assert = Assert.apply(this, arguments)
   assert.equalElements = function equalElements(stream, elements, message) {
   }
 }
-var list = require('../streamer').list
+var list = require('../streamer.js').list
 
 function test(assert, expected) {
   var actual = [], isStopped = false
@@ -22,9 +22,9 @@ function test(assert, expected) {
     actual.push(element)
   }, function stop(error) {
     isStopped = true
-    assert.equal(error, undefined, "stream is stopped without an error")
+    assert.equal(error, undefined, 'stream is stopped without an error')
   })
-  assert.ok(isStopped, "stream is stopped")
+  assert.ok(isStopped, 'stream is stopped')
   assert.deepEqual(actual, expected, "all elements were yielded in right order")
 }
 
@@ -42,7 +42,7 @@ exports['test mixed list'] = function(assert) {
 
 
 if (module == require.main)
-  require("test").run(exports);
+  require('test').run(exports);
 
 })
 

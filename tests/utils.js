@@ -5,16 +5,16 @@
 
 (typeof define === "undefined" ? function ($) { $(require, exports, module) } : define)(function (require, exports, module, undefined) {
 
-"use strict";
+'use strict';
 
 exports.test = function test(assert, done, stream, expected) {
   var actual = []
   stream(function next(element) {
     actual.push(element)
   }, function stop(error) {
-    assert.equal(error, undefined, "stream is stopped without an error")
+    assert.equal(error, undefined, 'stream is stopped without an error')
     assert.deepEqual(actual, expected,
-                     "all elements were yielded in correct order")
+                     'all elements were yielded in correct order')
     done()
   })
 }

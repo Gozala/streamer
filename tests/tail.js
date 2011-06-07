@@ -7,7 +7,7 @@
 
 'use strict';
 
-var streamer = require('../streamer'),
+var streamer = require('../streamer.js'),
     tail = streamer.tail, list = streamer.list
 var test = require('./utils.js').test
 
@@ -73,6 +73,6 @@ exports['test stream error before tail'] = function(assert, done) {
 }
 
 if (module == require.main)
-  require("test").run(exports);
+  require('test').run(exports);
 
 })

@@ -5,7 +5,7 @@
 
 (typeof define === "undefined" ? function ($) { $(require, exports, module) } : define)(function (require, exports, module, undefined) {
 
-"use strict";
+'use strict';
 
 exports['test list'] = require('./list.js')
 exports['test map'] = require('./map.js')
@@ -16,6 +16,6 @@ exports['test head'] = require('./head.js')
 exports['test tail'] = require('./tail.js')
 
 if (module == require.main)
-  require("test").run(exports);
+  require('test').run(exports);
 
 })

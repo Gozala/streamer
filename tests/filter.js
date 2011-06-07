@@ -5,9 +5,9 @@
 
 (typeof define === "undefined" ? function ($) { $(require, exports, module) } : define)(function (require, exports, module, undefined) {
 
-"use strict";
+'use strict';
 
-var streamer = require('../streamer'),
+var streamer = require('../streamer.js'),
     filter = streamer.filter, list = streamer.list
 var test = require('./utils.js').test
 
@@ -44,7 +44,7 @@ exports['test filter broken stream'] = function(assert, done) {
   function stream(next, stop) {
     var x = 3
     setTimeout(function onTimeout() {
-      if (!x) return stop(new Error("Boom!"))
+      if (!x) return stop(new Error('Boom!'))
       next(x--)
       setTimeout(onTimeout, 0)
     }, 0)
@@ -53,13 +53,13 @@ exports['test filter broken stream'] = function(assert, done) {
   var expected = [ 3, 1 ]
   var actual = []
   filtered(function next(x) { actual.push(x) }, function stop(error) {
-    assert.equal(error.message, "Boom!", "error propagated to filtered stream")
-    assert.deepEqual(actual, expected, "all values were yielded before error")
+    assert.equal(error.message, 'Boom!', 'error propagated to filtered stream')
+    assert.deepEqual(actual, expected, 'all values were yielded before error')
     done()
   })
 }
 
 if (module == require.main)
-  require("test").run(exports);
+  require('test').run(exports);
 
 })
