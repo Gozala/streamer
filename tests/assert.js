@@ -11,7 +11,6 @@ var Assert = require('test/assert').Assert
 exports.Assert = function StreamAssert() {
   var assert = Assert.apply(this, arguments)
   assert.equalElements = function equalElements(stream, elements, message) {
-    
   }
 }
 var list = require('../streamer').list

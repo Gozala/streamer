@@ -34,7 +34,7 @@ exports['test map with async stream'] = function(assert, done) {
     }, 0)
   }
   var mapped = map(stream, function(x) { return x + 1 })
-  test(assert, done, mapped, [ 6, 5, 4, 3, 2, 1 ])
+  test(assert, done, mapped, [ 6, 5, 4, 3, 2 ])
 }
 
 exports['test map broken stream'] = function(assert, done) {
@@ -47,7 +47,7 @@ exports['test map broken stream'] = function(assert, done) {
     }, 0)
   }
   var mapped = map(stream, function(x) { return x * x })
-  var expected = [ 9, 4, 1, 0 ]
+  var expected = [ 9, 4, 1]
   var actual = []
   mapped(function next(x) { actual.push(x) }, function stop(error) {
     assert.equal(error.message, "Boom!", "error propagated to mapped stream")
