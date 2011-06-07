@@ -3,7 +3,7 @@
   "id": "streamer",
   "version": "0.0.1",
   "description": "Stream utilities",
-  "keywords": [  ],
+  "keywords": [ "stream", "lazy", "iteration", "async" ],
   "author": "Irakli Gozalishvili <rfobic@gmail.com>",
   "homepage": "https://github.com/Gozala/streamer",
   "repository": {
