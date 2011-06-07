@@ -12,6 +12,7 @@ exports['test map'] = require('./map.js')
 exports['test filter'] = require('./filter.js')
 exports['test reduce'] = require('./reduce.js')
 exports['test zip'] = require('./zip.js')
+exports['test head'] = require('./head.js')
 
 if (module == require.main)
   require("test").run(exports);
