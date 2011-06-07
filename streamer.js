@@ -49,9 +49,9 @@ exports.empty = function empty() {
  *    // 4
  *    // 6
  */
-function map(input, mapper) {
+function map(source, mapper) {
   return function stream(next, stop) {
-    input(function onElement(element) {
+    source(function onElement(element) {
       next(mapper(element))
     }, stop)
   }
@@ -60,7 +60,7 @@ exports.map = map
 
 /**
  * Returns stream of filtered values.
- * @param {Function} input
+ * @param {Function} source
  *    source stream to be filtered
  * @param {Function} filter
  * @examples
@@ -72,9 +72,9 @@ exports.map = map
  *    // 2
  *    // 7
  */
-function filter(input, filterer) {
+function filter(source, filterer) {
   return function stream(next, stop) {
-    input(function onElement(element) {
+    source(function onElement(element) {
       if (filterer(element)) next(element)
     }, stop)
   }
@@ -83,7 +83,7 @@ exports.filter = filter
 
 /**
  * Returns stream of reduced values
- * @param {Function} input
+ * @param {Function} source
  *    stream to reduce.
  * @param {Function} reducer
  *    reducer function
@@ -97,10 +97,10 @@ exports.filter = filter
  *    sum(console.log)
  *    // 13
  */
-function reduce(input, reducer, initial) {
+function reduce(source, reducer, initial) {
   return function stream(next, stop) {
     var value = initial
-    input(function onElement(element) {
+    source(function onElement(element) {
       value = reducer(value, element)
     }, function onStop(error) {
       if (error) return stop(error)
