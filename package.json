@@ -15,7 +15,7 @@
     "web": "http://github.com/Gozala/streamer/issues/"
   },
   "devDependencies": {
-    "test": ">=0.0.10"
+    "test": ">=0.2.0"
   },
   "main": "./streamer.js",
   "engines": {
