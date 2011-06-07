@@ -268,22 +268,43 @@ function append() {
 exports.append = append
 
 /**
- * Merges all the streams from the given stream of streams into one.
+ * Returns a stream that contains all elements of each stream of the given
+ * source stream. `source` is stream of streams whose elements will be contained
+ * by the resulting stream. Any error from any stream will propagate to the
+ * resulting stream. Stream is stopped when all streams from `source` and source
+ * itself is ended. Elements of the stream are position in order they are
+ * delivered so it could happen that elements from second stream will appear
+ * before or between elements of the first stream.
+ * @param {Function} source
+ *    Stream of streams whose elements will be contained by resulting stream
+ * @examples
+ *    function async(next, stop) {
+ *      setTimeout(function() {
+ *        next('async')
+ *        stop()
+ *      }, 10)
+ *    }
+ *    var stream = merge(list(async, list(1, 2, 3)))
+ *    stream(console.log)
+ *    // 1
+ *    // 2
+ *    // 3
+ *    // 'async'
  */
-exports.merge = function merge(streams) {
+exports.merge = function merge(source) {
   return function stream(next, stop) {
     var open = 1
-    function end(error) {
+    function onStop(error) {
       if (!open) return false
       if (error) open = 0
       else open --
 
       if (!open) stop(error)
     }
-    streams(function onStream(stream) {
+    source(function onStream(stream) {
       open ++
-      stream(function onNext(value) { if (open) next(value) }, end)
-    }, end)
+      stream(function onNext(value) { if (open) next(value) }, onStop)
+    }, onStop)
   }
 }
 
