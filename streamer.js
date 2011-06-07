@@ -241,6 +241,33 @@ exports.tail = tail
 }
 
 /**
+ * Returns a stream that contains all elements of each stream in the order they
+ * appear in the original streams. If any of the `source` streams is stopped
+ * with an error than it propagates to the resulting stream and it also get's
+ * stopped.
+ * @examples
+ *    var stream = join(list(1, 2), list('a', 'b'))
+ *    stream(console.log)
+ *    // 1
+ *    // 2
+ *    // 'a'
+ *    // 'b'
+ */
+function append() {
+  var sources = Array.prototype.slice.call(arguments)
+  return function stream(next, stop) {
+    var source
+    function onStop(error) {
+      if (error) return stop && stop(error)
+      if ((source = sources.shift())) source(next, onStop)
+      else return stop && stop()
+    }
+    onStop()
+  }
+}
+exports.append = append
+
+/**
  * Merges all the streams from the given stream of streams into one.
  */
 exports.merge = function merge(streams) {
@@ -268,32 +295,6 @@ exports.print = function print(stream) {
     if (error) console.error(error)
     else console.log('<<')
   })
-}
-
-/**
- * Returns stream of values of all the given streams. Values of each stream
- * starting from the first one is streamed until it's stopped. If stream is just
- * ended values from the following stream are streamed if stream was stopped
- * with an error then joined stream is also stopped with an error.
- * @examples
- *    var stream = join(list([1, 2]), list(['a', 'b']))
- *    stream(console.log)
- *    // 1
- *    // 2
- *    // 'a'
- *    // 'b'
- */
-exports.append = function append() {
-  var inputs = Array.prototype.slice.call(arguments)
-  return function stream(next, stop) {
-    var input
-    function end(error) {
-      if (error) return stop && stop(error)
-      if ((input = inputs.shift())) input(next, end)
-      else return stop && stop()
-    }
-    end()
-  }
 }
 
 })
