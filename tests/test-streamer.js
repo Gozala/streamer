@@ -15,6 +15,7 @@ exports['test zip'] = require('./zip.js')
 exports['test head'] = require('./head.js')
 exports['test tail'] = require('./tail.js')
 exports['test append'] = require('./append.js')
+exports['test merge'] = require('./merge.js')
 
 
 if (module == require.main)
