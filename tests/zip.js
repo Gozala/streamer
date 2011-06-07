@@ -48,7 +48,7 @@ exports['test zip sync stream with async stream'] = function(assert, done) {
   ])
 }
 
-exports['~test filter broken stream'] = function(assert, done) {
+exports['test zip with late error'] = function(assert, done) {
   function stream(next, stop) {
     var x = 3
     setTimeout(function onTimeout() {
@@ -57,16 +57,40 @@ exports['~test filter broken stream'] = function(assert, done) {
       setTimeout(onTimeout, 0)
     }, 0)
   }
-  var filtered = filter(stream, function(number) { return number % 2 })
-  var expected = [ 3, 1 ]
-  var actual = []
-  filtered(function next(x) { actual.push(x) }, function stop(error) {
-    assert.equal(error.message, "Boom!", "error propagated to filtered stream")
-    assert.deepEqual(actual, expected, "all values were yielded before error")
+  var letters = list('a', 'b', 'c')
+  var zipped = zip(letters, stream)
+
+  test(assert, done, zipped, [
+    [ 'a', 3 ],
+    [ 'b', 2 ],
+    [ 'c', 1 ]
+  ])
+}
+
+exports['test zip with early error'] = function(assert, done) {
+  function stream(next, stop) {
+    var x = 3
+    setTimeout(function onTimeout() {
+      if (!x) return stop(new Error("Boom!"))
+      next(x--)
+      setTimeout(onTimeout, 0)
+    }, 0)
+  }
+  var letters = list('a', 'b', 'c', 'd')
+  var zipped = zip(stream, letters)
+  var buffer = []
+  zipped(function onTuple(tuple) {
+    buffer.push(tuple)
+  }, function onStop(error) {
+    assert.deepEqual(buffer, [
+      [ 3, 'a' ],
+      [ 2, 'b' ],
+      [ 1, 'c' ]
+    ], 'Stream yielded all tuples in right order before error in source stream')
+    assert.equal(error.message, "Boom!", "Stream is stopped with error")
     done()
   })
 }
-
 if (module == require.main)
   require("test").run(exports);
 
