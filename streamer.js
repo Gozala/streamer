@@ -218,6 +218,26 @@ function head(source, number) {
 }
 exports.head = head
 
+/**
+ * Returns a stream equivalent to given `source` stream, except that the first
+ * `number` of elements are omitted. If `source` stream has less than `number`
+ * of elements, then empty stream is returned. `number` defaults to `1` if it's
+ * not passed.
+ * @param {Function} source
+ *  source stream to return tail of.
+ * @param {Number} number=1
+ *    Number of elements that will be omitted.
+ */
+function tail(source, number) {
+  return function stream(next, stop) {
+    var left = number || 1
+    source(function onElement(element) {
+      if (left-- <= 0) return null
+      next(element)
+    }, stop)
+  }
+}
+exports.tail = tail
 }
 
 /**
