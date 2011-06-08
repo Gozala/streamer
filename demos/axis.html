@@ -10,13 +10,29 @@
           padding: 0;
           background: black;
           color: white;
+          font-family: Monaco, "Courier New", "DejaVu Sans Mono", "Bitstream Vera Sans Mono", monospace;
+      }
+      a {
+        text-decoration: none;
+        position: fixed;
+        bottom: 10%;
+        right: 20%;
+        color: white;
+      }
+      a:hover {
+        text-decoration: underline;
       }
       #x, #y {
+          font-size: 120%;
           position: fixed;
           padding: 8px;
       }
-      #x { border-left: 1px solid white; }
-      #y { border-top: 1px solid white; }
+      #x {
+        border-left: 1px solid white;
+      }
+      #y {
+        border-top: 1px solid white;
+      }
     </style>
   </head>
   <body>
@@ -40,7 +56,8 @@
     })
     require.main('main')
   </script>
-  <span id="x"></span>
-  <span id="y"></span>
+  <code id="x"></code>
+  <code id="y"></code>
+  <a href="http://jeditoolkit.com/streamer/demos/axis.html">http://jeditoolkit.com/streamer/demos/axis.html</a>
   </body>
 <html>
