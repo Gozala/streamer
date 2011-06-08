@@ -238,7 +238,6 @@ function tail(source, number) {
   }
 }
 exports.tail = tail
-}
 
 /**
  * Returns a stream that contains all elements of each stream in the order they
