@@ -3,6 +3,8 @@
          forin: true latedef: false globalstrict: true */
 /*global define: true setInterval: true */
 
+/* html version: http://jeditoolkit.com/streamer/docs/readme.html */
+
 'use strict';
 
 // In computing, the term stream is used in a number of ways, in all cases
@@ -27,9 +29,11 @@ function stream(next) {
 stream(function onEach(element) {
   console.log(element)
 })
-// 1
-// 2
-// 3
+//
+//      1
+//      2
+//      3
+//
 
 // Or, we can create a convenience
 // [high-order function](http://en.wikipedia.org/wiki/Higher-order_function)
@@ -43,9 +47,11 @@ function print(stream) {
 
 // And, print stream with it:
 print(stream)
-// 1
-// 2
-// 3
+//
+//      1
+//      2
+//      3
+//
 
 // Good, but!
 // Stream is a sequence of elements **made available over time**.
@@ -73,11 +79,12 @@ function numbers(min, max) { // Another high-order function to makes streams
 var numberStream = numbers(0, 100)
 // And we print it!!
 print(numberStream)
-
-// 29
-// 33
-// 45
-// ....
+//
+//      29
+//      33
+//      45
+//      ....
+//
 
 // Oops! Stream keeps printing this numbers infinitely. Right, that's because
 // stream is infinite! So we may have finite and infinite streams and difference
@@ -154,20 +161,22 @@ function list() {
 
 // Another attempt to print:
 print(list(1, 2, 3))
-//>>>
-//1
-//2
-//3
-//<<<
+//
+//      >>>
+//      1
+//      2
+//      3
+//      <<<
+//
 
 // Lets refine our stream definition again:
 
-// Stream is a function representing sequence of elements. It MAY be read by
+// _Stream is a function representing sequence of elements. It MAY be read by
 // calling it with one function argument, that will be called every time element
 // when becomes available. Stream takes second optional function argument which
 // is called once stream is stopped, either without arguments when stream runs
 // out of elements or with an error indicating a reason of failure why stream
-// was stopped.
+// was stopped._
 
 // Let's do something interesting from a real life, like stream of all directory
 // entries including entries from all nested directories (lstree).
@@ -180,7 +189,7 @@ print(list(1, 2, 3))
 var fs = require("fs")
 function ls(path) {
   return function stream(next, stop) {
-    //see: http://nodejs.org/docs/v0.4.8/api/fs.html#fs.readdir
+    //see: [http://nodejs.org/docs/v0.4.8/api/fs.html#fs.readdir](http://nodejs.org/docs/v0.4.8/api/fs.html#fs.readdir)
     fs.readdir(path, function onEntries(error, entries) {
       var entry
       // On error we stop a stream with that error.
@@ -196,15 +205,15 @@ function ls(path) {
 // Try it out for current working directory:
 print(ls('./'))
 
-// >>>
-// .gitignore
-// History.md
-// package.json
-// readme.js
-// Readme.md
-// streamer.js
-// tests
-// <<<
+//      >>>
+//      .gitignore
+//      History.md
+//      package.json
+//      readme.js
+//      Readme.md
+//      streamer.js
+//      tests
+//      <<<
 
 // Next wrapper we will need is, `fs.stat`. We define function that `takes` path
 // and returns lazy stream with only element representing `stat` of the given
@@ -212,7 +221,7 @@ print(ls('./'))
 // but if don't worry if you are not familiar with that pattern.
 function stat(path) {
   return function stream(next, stop) {
-    //see: http://nodejs.org/docs/v0.4.8/api/fs.html#fs.stat
+    //see: [http://nodejs.org/docs/v0.4.8/api/fs.html#fs.stat](http://nodejs.org/docs/v0.4.8/api/fs.html#fs.stat)
     fs.stat(path, function onStat(error, stats) {
       // On error we stop a stream with that error.
       if (error) return stop(error)
@@ -227,23 +236,24 @@ function stat(path) {
 
 // Try it out for current working directory:
 print(stat('./'))
-
-//>>>
-// { dev: 234881026,
-//  ino: 19933437,
-//  mode: 16877,
-//  nlink: 17,
-//  uid: 502,
-//  gid: 20,
-//  rdev: 0,
-//  size: 578,
-//  blksize: 4096,
-//  blocks: 0,
-//  atime: Thu, 09 Jun 2011 10:51:25 GMT,
-//  mtime: Thu, 09 Jun 2011 12:48:32 GMT,
-//  ctime: Thu, 09 Jun 2011 12:48:32 GMT,
-//  path: './' }
-//<<<
+//
+//      >>>
+//      { dev: 234881026,
+//      ino: 19933437,
+//      mode: 16877,
+//      nlink: 17,
+//      uid: 502,
+//      gid: 20,
+//      rdev: 0,
+//      size: 578,
+//      blksize: 4096,
+//      blocks: 0,
+//      atime: Thu, 09 Jun 2011 10:51:25 GMT,
+//      mtime: Thu, 09 Jun 2011 12:48:32 GMT,
+//      ctime: Thu, 09 Jun 2011 12:48:32 GMT,
+//      path: './' }
+//      <<<
+//
 
 // Great now we are done with a wrappers. Now we can list entries of the
 // directory, in order to list nested entries we need to distinguish directories
@@ -263,11 +273,13 @@ function map(source, mapper) {
 
 // Lets try to map numbers into doubled values:
 print(map(list(1, 2, 3), function(x) { return x * 2 }))
-// >>>
-// 2
-// 4
-// 6
-// <<<
+//
+//      >>>
+//      2
+//      4
+//      6
+//      <<<
+//
 
 // Implementing a function now that is equivalent of `ls` with a diff that it
 // returns stream of paths instead of entry filenames.
@@ -277,11 +289,13 @@ function paths(path) { return map(ls(path), join.bind(null, path)) }
 
 // Test drive:
 print(paths(process.cwd()))
-// >>>
-// /Users/gozala/Projects/streamer/History.md
-// /Users/gozala/Projects/streamer/package.json
-// ...
-// <<<
+//
+//      >>>
+//      /Users/gozala/Projects/streamer/History.md
+//      /Users/gozala/Projects/streamer/package.json
+//      ...
+//      <<<
+//
 
 // Now we need another equivalent of `paths` that returns stream of directory
 // paths only. To do that we need to filter out directories. So let's implement
@@ -296,10 +310,12 @@ function filter(source, filterer) {
 }
 // Simple example for filtering out odd numbers from number stream.
 print(filter(list(1, 2, 3, 4), function(x) { return x % 2 }))
-// >>>
-// 1
-// 3
-// <<<
+//
+//      >>>
+//      1
+//      3
+//      <<<
+//
 
 // Awesome, going back to our problem, to figure out weather we have a file
 // path or directory path we need to map paths to stats and then filter out
@@ -333,12 +349,14 @@ function merge(source) {
 
 // Let's try simple example:
 print(merge(list(list(1, 2), list('a', 'b'))))
-// >>>
-// 1
-// 2
-// a
-// b
-// <<<
+//
+//      >>>
+//      1
+//      2
+//      a
+//      b
+//      <<<
+//
 
 // Now we can refine our dirs function:
 function dirs(paths) {
@@ -349,11 +367,13 @@ function dirs(paths) {
 
 // Test drive:
 print(dirs(paths(process.cwd())))
-// >>>
-// /Users/gozala/Projects/streamer/.git
-// /Users/gozala/Projects/streamer/node_modules
-// ...
-// <<<
+//
+//      >>>
+//      /Users/gozala/Projects/streamer/.git
+//      /Users/gozala/Projects/streamer/node_modules
+//      ...
+//      <<<
+//
 
 // Finally we have all we need to implement `lstree`:
 function lstree(path) {
@@ -364,12 +384,14 @@ function lstree(path) {
 
 // Crossing a fingers!!
 print(lstree('./'))
-// >>>
-// .git
-// .git/COMMIT_EDITMSG
-// .git/config
-// ....
-// <<<
+//
+//      >>>
+//      .git
+//      .git/COMMIT_EDITMSG
+//      .git/config
+//      ....
+//      <<<
+//
 
 // So let's take a look back now, if we ignore all the core stream functions
 // that are part of [streamer library](https://github.com/Gozala/streamer) and
@@ -388,3 +410,7 @@ function lstree(path) {
   var nested = merge(map(dirs(entries), lstree))
   return merge(list(entries, nested))
 }
+
+// Feel free to take a look at another example of using [streams in browser]
+// (http://jeditoolkit.com/streamer/demos/axis.html). Or discover even more
+// utility functions [in the source](https://github.com/Gozala/streamer/blob/master/streamer.js)
