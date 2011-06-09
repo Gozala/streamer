@@ -13,8 +13,8 @@ without spaghetti code ninjas!
 
 ## Documentation ##
 
-  - Detailed walk through in available in [html](html-readme) and
-    [js](js-readme) versions.
+  - Detailed walk through in available in [html][html-readme] and
+    [js][js-readme] versions.
   - Very basic [browser demo]
 
 [html-readme]:http://jeditoolkit.com/streamer/docs/readme.html
