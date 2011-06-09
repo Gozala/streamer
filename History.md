@@ -1,5 +1,9 @@
 # Changes #
 
+## 0.0.2 / 2011-06-09 ##
+
+  - Adding docs & demos.
+
 ## 0.0.2 / 2011-06-08 ##
 
   - Fixed git staging error that caused syntax error.

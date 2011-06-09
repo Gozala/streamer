@@ -1,9 +1,9 @@
 {
   "name": "streamer",
   "id": "streamer",
-  "version": "0.0.2",
-  "description": "Stream utilities",
-  "keywords": [ "stream", "lazy", "iteration", "async" ],
+  "version": "0.0.3",
+  "description": "Asynchronously recursive, pure function <3 via lazy streams.",
+  "keywords": [ "stream", "functional", "spaghetti", "lazy", "iteration", "async" ],
   "author": "Irakli Gozalishvili <rfobic@gmail.com>",
   "homepage": "https://github.com/Gozala/streamer",
   "repository": {
