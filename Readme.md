@@ -11,6 +11,10 @@ without spaghetti code ninjas!
 
     npm install streamer
 
+## Require ##
+
+    var streamer = require('https!raw.github.com/Gozala/streamer/v0.0.3/streamer.js')
+
 ## Documentation ##
 
   - Detailed walk through in available in [html][html-readme] and
