@@ -104,7 +104,7 @@ function print(stream) {
 
 // Now we need a stream to print. Instead of creating another basic stream,
 // this time we will take more generic approach, by defining a function that
-// takes array as an argument and returns stream of given it's elements:
+// takes array as an argument and returns stream of it's elements:
 
 function list(array) {
   return function stream(next, stop) {
@@ -182,7 +182,7 @@ print(list(1, 2, 3))
 // entries including entries from all nested directories (lstree).
 //
 // First we will have to create few stream based wrappers around node's fs
-// funnctions. We will start with a function that takes path for a directory
+// functions. We will start with a function that takes path for a directory
 // and returns lazy stream of it's entries. If reading a directory fails we
 // will stop stream with an error:
 
@@ -259,8 +259,8 @@ print(stat('./'))
 // directory, in order to list nested entries we need to distinguish directories
 // form files. To do that we will create a function that takes directory entries
 // stream and returns filtered stream containing only entries that are
-// directories. We already can get stats from paths, so we just need entry paths
-// to stats. Let's make a generic map function that takes stream and mapper
+// directories. We already can get stats from paths, so we just need to map entry
+// paths to stats. Let's make a generic map function that takes stream and mapper
 // function and returns stream of mapped elements.
 
 function map(source, mapper) {
