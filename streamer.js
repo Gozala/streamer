@@ -245,7 +245,7 @@ exports.tail = tail
  * with an error than it propagates to the resulting stream and it also get's
  * stopped.
  * @examples
- *    var stream = join(list(1, 2), list('a', 'b'))
+ *    var stream = append(list(1, 2), list('a', 'b'))
  *    stream(console.log)
  *    // 1
  *    // 2
