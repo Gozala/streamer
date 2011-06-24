@@ -7,12 +7,12 @@
 
 'use strict';
 
-exports.test = function test(assert, done, stream, expected) {
+exports.test = function test(assert, done, stream, expected, reason) {
   var actual = []
   stream(function next(element) {
     actual.push(element)
   }, function stop(error) {
-    assert.equal(error, undefined, 'stream is stopped without an error')
+    assert.deepEqual(error, reason, 'stream is stopped as expected')
     assert.deepEqual(actual, expected,
                      'all elements were yielded in correct order')
     done()
