@@ -318,4 +318,29 @@ exports.print = function print(stream) {
   })
 }
 
+function hub(source) {
+  var listeners = [], isStopped = false, reason
+  source(function onNext(element) {
+    var index = 0
+    while (index < listeners.length) {
+      if (listeners[index++][0](element) === false)
+        listeners.splice(index, 1)
+    }
+  }, function onStop(error) {
+    isStopped = true
+    reason = error
+    var index = 0, listener
+    while (index < listeners.length) {
+      if ((listener = listeners[index++][1]))
+        listener(reason)
+    }
+  })
+  return function stream(next, stop) {
+    // If stream is already stopped, we notify a listener.
+    if (isStopped && stop) stop(reason)
+    // Else we register listener.
+    else listeners.push([ next, stop ])
+  }
+}
+exports.hub = hub
 })
