@@ -33,8 +33,7 @@ exports['test append sync & async streams'] = function(assert, done) {
     var x = 3
     setTimeout(function onTimeout() {
       if (!x) return stop()
-      next(x--)
-      setTimeout(onTimeout, 0)
+      if (false !== next(x--)) setTimeout(onTimeout, 0)
     }, 0)
   }
 
@@ -47,8 +46,7 @@ exports['test append & reappend'] = function(assert, done) {
     var x = 3
     setTimeout(function onTimeout() {
       if (!x) return stop()
-      next(x--)
-      setTimeout(onTimeout, 0)
+      if (false !== next(x--)) setTimeout(onTimeout, 0)
     }, 0)
   }
 
@@ -63,8 +61,7 @@ exports['test map broken stream'] = function(assert, done) {
     var x = 3
     setTimeout(function onTimeout() {
       if (!x) return stop(new Error("Boom!"))
-      next(x--)
-      setTimeout(onTimeout, 0)
+      if (false !== next(x--)) setTimeout(onTimeout, 0)
     }, 0)
   }
   
@@ -76,6 +73,39 @@ exports['test map broken stream'] = function(assert, done) {
     done()
   })
 }
+
+exports['test interrupt apended stream'] = function(assert) {
+  var letters = list('a', 'b', 'c', 'd')
+  var numbers = list(1, 2, 3, 3, 5)
+  var stream = append(letters, numbers)
+  var buffer = []
+  var stopped = []
+  stream(function onElement(element) {
+    buffer.push(element)
+    if (buffer.length === 3) return false
+  }, stopped.push.bind(stopped))
+  assert.deepEqual(buffer, [ 'a', 'b', 'c' ],
+                   'stream yielded elements until it was interrupted')
+
+  buffer = []
+  stream(function onElement(element) {
+    buffer.push(element)
+    if (buffer.length === 4) return false
+  }, stopped.push.bind(stopped))
+  assert.deepEqual(buffer, [ 'a', 'b', 'c', 'd' ],
+                   'stream yielded elements until it was interrupted')
+
+  buffer = []
+  stream(function onElement(element) {
+    buffer.push(element)
+    if (buffer.length === 7) return false
+  }, stopped.push.bind(stopped))
+  assert.deepEqual(buffer, [ 'a', 'b', 'c', 'd', 1, 2, 3 ],
+                   'stream yielded elements until it was interrupted')
+
+  assert.equal(stopped.length, 0, 'interrupted streams do not stop')
+}
+
 
 if (module == require.main)
   require('test').run(exports);
