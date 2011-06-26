@@ -27,7 +27,7 @@ exports.list = list
  * Creates empty stream. This is equivalent of `list()`.
  */
 exports.empty = function empty() {
-  return list()
+  return function stream(next, stop) { return stop && stop() }
 }
 
 
