@@ -339,9 +339,10 @@ function hub(source) {
   var listeners = [], isStopped = false, reason
   source(function onNext(element) {
     var index = 0
+    // Maybe it'd be better to just iterate on sliced array instead ?
     while (index < listeners.length) {
       if (listeners[index++][0](element) === false)
-        listeners.splice(index, 1)
+        listeners.splice(--index, 1)
     }
   }, function onStop(error) {
     isStopped = true
