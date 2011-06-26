@@ -161,7 +161,7 @@ var zip = exports.zip = (function Zip() {
         // Otherwise we buffer an element.
         buffers[id].push(element)
         // If tuple is ready we yield it.
-        if (hasTuple(buffers)) next(shiftTuple(buffers))
+        return hasTuple(buffers) ? next(shiftTuple(buffers)) : true
       }
 
       function onStop(id, error) {
