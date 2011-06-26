@@ -59,7 +59,7 @@ exports.empty = function empty() {
 function map(source, mapper) {
   return function stream(next, stop) {
     source(function onElement(element) {
-      next(mapper(element))
+      return next(mapper(element))
     }, stop)
   }
 }
