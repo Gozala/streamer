@@ -7,6 +7,12 @@
 
 'use strict';
 
+function limit(source, times) {
+  times = times || 1
+  return function limited() {
+    return times-- > 0 && source ? source.apply(this, arguments) : undefined
+  }
+}
 
 /**
  * Creates stream of given elements.
@@ -194,6 +200,31 @@ var zip = exports.zip = (function Zip() {
   }
 })()
 
+
+/**
+ * Returns a stream consisting of the given `source` stream elements starting
+ * form the `start` zero-based index till `end` zero-based index element. If
+ * `end` is not passed all elements will be included.
+ */
+function slice(source, start, end) {
+  // Zero-based index at which to begin extraction.
+  start = start || 0
+  // Zero-based index at which to end extraction
+  end = end || Infinity
+  return function stream(next, stop) {
+    var index = -1, interrupt
+    source(function onElement(element) {
+      // Skip elements until we reach start of the extraction range.
+      if (++index < start) return true
+      // If index is in range we want to extract from then yield.
+      if (index < end) interrupt = next(element)
+      // If this is last element we stop stream and interrupt reading
+      return index + 1 >= end ? stop() | false : interrupt
+    }, stop = limit(stop))
+  }
+}
+exports.slice = slice
+
 /**
  * Returns a stream containing only first `number` of elements of the given
  * `source` stream or all elements, if `source` stream has less than `number`
@@ -204,18 +235,7 @@ var zip = exports.zip = (function Zip() {
  *    number of elements to take from stream
  */
 function head(source, number) {
-  return function stream(next, stop) {
-    var left = number || 1
-    source(function onElement(element) {
-      if (left-- <= 0) return null
-        next(element)
-        if (left <= 0 && stop) stop()
-    }, function onStop(error) {
-      if (left <= 0) return null
-      number = 0
-      stop(error)
-    })
-  }
+  return slice(source, 0, number && number >= 0 ? number : 1)
 }
 exports.head = head
 
@@ -230,13 +250,7 @@ exports.head = head
  *    Number of elements that will be omitted.
  */
 function tail(source, number) {
-  return function stream(next, stop) {
-    var left = number || 1
-    source(function onElement(element) {
-      if (left-- > 0) return null
-      next(element)
-    }, stop)
-  }
+  return slice(source, number && number >= 0 ? number : 1)
 }
 exports.tail = tail
 
