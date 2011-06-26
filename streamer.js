@@ -14,9 +14,10 @@
  *    list('a', 2, {})(console.log)
  */
 function list() {
-  var elements = Array.prototype.slice.call(arguments, 0)
+  var elements = Array.prototype.slice.call(arguments), length = elements.length
   return function stream(next, stop) {
-    elements.forEach(next)
+    var index = 0
+    while (index < length) if (false === next(elements[index++])) return false
     if (stop) stop()
   }
 }
