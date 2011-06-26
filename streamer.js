@@ -347,10 +347,9 @@ function hub(source) {
   }, function onStop(error) {
     isStopped = true
     reason = error
-    var index = 0, listener
-    while (index < listeners.length) {
-      if ((listener = listeners[index++][1]))
-        listener(reason)
+    var listener, stop
+    while ((listener =  listeners.shift())) {
+      if ((stop = listener[1])) stop(reason)
     }
   })
   return function stream(next, stop) {
