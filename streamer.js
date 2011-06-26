@@ -307,9 +307,9 @@ exports.append = append
  */
 exports.merge = function merge(source) {
   return function stream(next, stop) {
-    var open = 1
+    var open = 1, alive
     function onStop(error) {
-      if (!open) return false
+      if (!open || false === alive) return false
       if (error) open = 0
       else open --
 
@@ -317,7 +317,9 @@ exports.merge = function merge(source) {
     }
     source(function onStream(stream) {
       open ++
-      stream(function onNext(value) { if (open) next(value) }, onStop)
+      stream(function onNext(value) {
+        return open && false !== alive ? alive = next(value) : false
+      }, onStop)
     }, onStop)
   }
 }

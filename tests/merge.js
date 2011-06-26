@@ -30,8 +30,7 @@ exports['test merge sync & async streams'] = function(assert, done) {
     var x = 3
     setTimeout(function onTimeout() {
       if (!x) return stop()
-      next(x--)
-      setTimeout(onTimeout, 0)
+      if (false !== next(x--)) setTimeout(onTimeout, 0)
     }, 0)
   }
 
@@ -45,8 +44,7 @@ exports['test merge with broken stream'] = function(assert, done) {
     var x = 3
     setTimeout(function onTimeout() {
       if (!x) return stop(new Error("Boom!"))
-      next(x--)
-      setTimeout(onTimeout, 0)
+      if (false !== next(x--)) setTimeout(onTimeout, 0)
     }, 0)
   }
   
@@ -64,8 +62,7 @@ exports['test merge async stream of streams'] = function(assert, done) {
     var x = 3
     setTimeout(function onTimeout() {
       if (!x) return stop()
-      next(x--)
-      setTimeout(onTimeout, 0)
+      if (false !== next(x--)) setTimeout(onTimeout, 0)
     }, 0)
   }
   function source(next, stop) {
@@ -74,12 +71,42 @@ exports['test merge async stream of streams'] = function(assert, done) {
     next(list(1, 2))
     setTimeout(function onTimeout() {
       if (!x) return next(async) || stop()
-      next(list('a', x--))
-      setTimeout(onTimeout, 0)
+      if (false !== next(list('a', x--))) setTimeout(onTimeout, 0)
     }, 0)
   }
 
   test(assert, done, merge(source), [1, 2, 'a', 3, 'a', 2, 'a', 1, 3, 2, 1])
+}
+
+exports['test interrupt merged stream'] = function(assert) {
+  var stream = merge(list(list(1, 2, 3), list(), list('a', 'b'), list('!')))
+  var buffer = []
+  var stopped = []
+  stream(function onNext(element) {
+    buffer.push(element)
+    if (buffer.length === 3) return false
+  }, stopped.push.bind(stopped))
+
+  assert.deepEqual(buffer, [ 1, 2, 3 ],
+                   'stream yielded elements until it was interrupted')
+
+  buffer = []
+  stream(function onNext(element) {
+    buffer.push(element)
+    if (buffer.length === 4) return false
+  }, stopped.push.bind(stopped))
+  assert.deepEqual(buffer, [ 1, 2, 3, 'a' ],
+                   'stream yielded elements until it was interrupted')
+
+  buffer = []
+  stream(function onNext(element) {
+    buffer.push(element)
+    if (buffer.length === 6) return false
+  }, stopped.push.bind(stopped))
+  assert.deepEqual(buffer, [ 1, 2, 3, 'a', 'b', '!' ],
+                   'stream yielded elements until it was interrupted')
+
+  assert.equal(stopped.length, 0, 'interrupted streams do not stop')
 }
 
 if (module == require.main)
