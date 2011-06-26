@@ -82,7 +82,7 @@ exports.map = map
 function filter(source, filterer) {
   return function stream(next, stop) {
     source(function onElement(element) {
-      if (filterer(element)) next(element)
+      return filterer(element) ? next(element) : true
     }, stop)
   }
 }

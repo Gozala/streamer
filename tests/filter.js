@@ -32,8 +32,7 @@ exports['test filter with async stream'] = function(assert, done) {
     var x = 5
     setTimeout(function onTimeout() {
       if (!x) return stop()
-      next(x--)
-      setTimeout(onTimeout, 0)
+      if (false !== next(x--)) setTimeout(onTimeout, 0)
     }, 0)
   }
   var odds = filter(stream, function(number) { return number % 2 })
@@ -45,8 +44,7 @@ exports['test filter broken stream'] = function(assert, done) {
     var x = 3
     setTimeout(function onTimeout() {
       if (!x) return stop(new Error('Boom!'))
-      next(x--)
-      setTimeout(onTimeout, 0)
+      if (false !== next(x--)) setTimeout(onTimeout, 0)
     }, 0)
   }
   var filtered = filter(stream, function(number) { return number % 2 })
@@ -58,6 +56,27 @@ exports['test filter broken stream'] = function(assert, done) {
     done()
   })
 }
+
+exports['test interrupt reading filtered stream'] = function(assert) {
+  var stream = list(3, 2, 1, 0)
+  var called = 0
+  var expected = [ 3, 1 ]
+  var actual = []
+  var stops = []
+  var filtered = filter(stream, function(x) { called++; return x % 2 })
+
+  filtered(function next(element) {
+    actual.push(element)
+    if (element === 1) return false
+  }, function stop(reason) {
+    stops.push(reason)
+  })
+
+  assert.equal(stops.length, 0, 'stream is not stopped if we interrupt read')
+  assert.equal(called, 3, 'map is called expected times')
+  assert.deepEqual(actual, expected, 'mapped as expected')
+}
+
 
 if (module == require.main)
   require('test').run(exports);
