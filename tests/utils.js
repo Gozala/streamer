@@ -19,4 +19,23 @@ exports.test = function test(assert, done, stream, expected, reason) {
   })
 }
 
+exports.pipe = function pipe(readers) {
+  return function stream(next, stop) {
+    readers.push({ next: next, stop: stop })
+  }
+}
+
+exports.read = function read(stream, done, length) {
+  var buffer = []
+  length = length || Infinity
+  stream(function onNext(element) {
+    buffer.push(element)
+    // Interrupt reading if read desired length
+    return buffer.length !== length
+  }, function onStop(reason) {
+    if (done) done(reason)
+  })
+  return buffer
+}
+
 })

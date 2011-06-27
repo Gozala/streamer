@@ -8,13 +8,8 @@
 'use strict';
 
 var hub = require('../streamer.js').hub
-var test = require('./utils.js').test
-
-function pipe(readers) {
-  return function stream(next, stop) {
-    readers.push({ next: next, stop: stop })
-  }
-}
+var utils = require('./utils.js'),
+    test = utils.test, pipe = utils.pipe
 
 function copy(source) {
   var buffer = [], reason;
