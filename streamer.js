@@ -335,6 +335,70 @@ exports.print = function print(stream) {
   })
 }
 
+/**
+ * Returns a stream equivalent to a given `source`, with difference that
+ * all the consumers will start reading it from the point it's at the given
+ * moment. This is useful with streams such as user generated events (clicks,
+ * keypress, etc..) where multiple stream readers might need to read from the
+ * same source. In other words, this is your
+ * [pub / sub](http://en.wikipedia.org/wiki/Publish/subscribe) for streams.
+ * @param {Function} source
+ *    Stream whose elements get published to a subscribers.
+ * @return {Function}
+ *    Stream that multiple subscribers can read from.
+ * @examples
+ *    function range(start, end) {
+ *      return function stream(next, stop) {
+ *        var number = start - 1
+ *        setTimeout(function onNext() {
+ *          if (++number >= end)
+ *            return stop()
+ *          if (false !== next(number))
+ *            setTimeout(onNext, 2)
+ *        }, 2)
+ *      }
+ *    }
+ *    function printer(index) {
+ *      return function print(stream) {
+ *        stream(console.log.bind(console, '#' + index + '>'),
+ *               console.log.bind(console, '<#' + index))
+ *      }
+ *    }
+ *    var numbers = range(1, 5)
+ *    printer(1)(numbers)
+ *    setTimeout(function () { printer(2)(numbers) }, 5)
+ *
+ *    // Output will look something like this:
+ *    #1> 1
+ *    #1> 2
+ *    #1> 3
+ *    #2> 1
+ *    #1> 4
+ *    #2> 2
+ *    <#1
+ *    #2> 3
+ *    #2> 4
+ *    <#2
+ *
+ *    // If you noticed second print started form the first `1` element. Now
+ *    // lets do similar thing with a hub.
+ *
+ *    var numbers = hub(range(1, 5))
+ *    printer(1)(numbers)
+ *    setTimeout(function () { printer(2)(numbers) }, 5)
+ *
+ *    // In this case output will be different:
+ *
+ *    #1> 1
+ *    #1> 2
+ *    #1> 3
+ *    #1> 4
+ *    #2> 4
+ *    <#1
+ *    <#2
+ *
+ *    // Notice this time second print only printed only following elements.
+ */
 function hub(source) {
   var listeners = [], isStopped = false, reason
   source(function onNext(element) {
