@@ -7,10 +7,16 @@
 
 'use strict';
 
-function limit(source, times) {
-  times = times || 1
+/**
+ * Internal utility function that takes a `source` function and optional
+ * `number` arguments and returns a function that calls `source` with a
+ * given arguments only first `number` of times it's called. Useful for
+ * wrapping callbacks that must be called only ones for example.
+ */
+function limit(source, number) {
+  number = number || 1
   return function limited() {
-    return times-- > 0 && source ? source.apply(this, arguments) : undefined
+    return number-- > 0 && source ? source.apply(this, arguments) : undefined
   }
 }
 
