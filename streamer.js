@@ -251,7 +251,7 @@ exports.head = head
  * of elements, then empty stream is returned. `number` defaults to `1` if it's
  * not passed.
  * @param {Function} source
- *  source stream to return tail of.
+ *    source stream to return tail of.
  * @param {Number} number=1
  *    Number of elements that will be omitted.
  */
@@ -332,6 +332,10 @@ exports.merge = function merge(source) {
 
 /**
  * Utility function to print streams.
+ * @param {Function} stream
+ *    stream to print
+ * @examples
+ *    print(list('Hello', 'world'))
  */
 exports.print = function print(stream) {
   console.log('>>')
