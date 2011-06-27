@@ -21,17 +21,31 @@ function limit(source, number) {
 }
 
 /**
+ * Utility function that returns streams of elements of given `array`. This
+ * function is dangerous as array mutations will have side effects on the
+ * returned stream so it should be used with a care, reader of such stream
+ * **MUST NOT** mutate source array, this is also reason why we don't export
+ * this function.
+ */
+function streamArray(elements) {
+  return function stream(next, stop) {
+    var index = 0
+    while (index < elements.length)
+      // If stream reader interrupts reading we just return.
+      if (false === next(elements[index++])) return false
+    // Once all elements were yielded we stop a stream if such callback was
+    // passed.
+    if (stop) stop()
+  }
+}
+
+/**
  * Creates stream of given elements.
  * @examples
  *    list('a', 2, {})(console.log)
  */
 function list() {
-  var elements = Array.prototype.slice.call(arguments), length = elements.length
-  return function stream(next, stop) {
-    var index = 0
-    while (index < length) if (false === next(elements[index++])) return false
-    if (stop) stop()
-  }
+  return streamArray(Array.prototype.slice.call(arguments))
 }
 exports.list = list
 
