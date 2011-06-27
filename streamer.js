@@ -448,4 +448,36 @@ function hub(source) {
   }
 }
 exports.hub = hub
+
+/**
+ * Returns a stream equivalent to a given `source` by caching all it's elements
+ * into memory for faster reads. This is useful with `source` streams that are
+ * expensive to compute (requires access to the network for example). Use it
+ * carefully though, do not cache infinite streams and be aware that
+ * asynchronous stream when cached will yield some or all elements
+ * synchronously. Also be aware, that unlike other functions, this is greedy
+ * which means that it will start reading `source` stream immediately.
+ * @param {Function} source
+ *    source stream to cache.
+ * @returns {Function}
+ *    cached equivalent of source that can be read multiple times.
+ */
+function cache(source) {
+  var buffer = []
+  // Creating a stream that streams element of the buffer array.
+  function cached(next, stop) {
+    var index = 0
+    while (index < buffer.length)
+      if (false === next(buffer[index++])) return false
+    stop()
+  }
+  return append(cached, hub(function stream(next, stop) {
+    source(function onElement(element) {
+      buffer.push(element)
+      return next(element)
+    }, stop)
+  }));
+}
+exports.cache = cache
+
 })
