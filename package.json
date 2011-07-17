@@ -1,7 +1,7 @@
 {
   "name": "streamer",
   "id": "streamer",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Asynchronously recursive, pure function <3 via lazy streams.",
   "keywords": [ "stream", "functional", "spaghetti", "lazy", "iteration", "async" ],
   "author": "Irakli Gozalishvili <rfobic@gmail.com>",
@@ -19,8 +19,7 @@
   },
   "main": "./streamer.js",
   "engines": {
-    "node": "0.4.x",
-    "teleport": ">=0.2.0"
+    "node": ">=0.4.0"
   },
   "scripts": {
     "test": "node tests/test-streamer.js"
