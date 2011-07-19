@@ -11,8 +11,8 @@
 // referring to a sequence of elements made available over time.
 
 
-// Let's create a very basic stream representing sequence of elements from 1 to
-// 3.
+// Let's create a very basic stream representing a sequence of elements
+// from 1 to 3.
 
 function stream(next) {
   [ 1, 2, 3 ].forEach(function(element) {
@@ -20,10 +20,10 @@ function stream(next) {
   })
 }
 
-// From this example we can define stream as:
-// function representing sequence of elements. It can be read by calling with
-// one function argument, which will be called back with each element of
-// sequence.
+// From this example we can define a stream as:
+// a function representing a sequence of elements. It can be read by calling
+// with one function argument, which will be called back with each element of
+// the sequence.
 
 // So we can print our stream like this:
 stream(function onEach(element) {
@@ -55,27 +55,27 @@ print(stream)
 
 // Good, but!
 // Stream is a sequence of elements **made available over time**.
-// In other words sequence may be lazy, and our stream definition needs
+// In other words a sequence may be lazy, and our stream definition needs
 // refinement:
 //
-// Stream is a function representing sequence of elements. It MAY be read by
+// Stream is a function representing a sequence of elements. It MAY be read by
 // calling it with one function argument, that will be called back with each
 // element when it becomes available.
 
 // Let's create a function `numbers`, that takes `min` and
 // `max` numbers and returns a lazy stream of random numbers in a given range.
-// To make stream lazy, we will make it's new elements available every 20ms.
-function numbers(min, max) { // Another high-order function to makes streams
+// To make the stream lazy, we will make its new elements available every 20ms.
+function numbers(min, max) { // Another high-order function to make streams
   var delta = max - min
   return function stream(next) { // Actual stream that generates 
     setInterval(function generate() {
-      // We yield random number in given range every 20ms.
+      // We yield a random number in given range every 20ms.
       next(min + Math.round(Math.random() * delta))
     }, 20)
   }
 }
 
-// Make a stream of random numbers in 0 - 100 range.
+// Make a stream of random numbers in the 0 - 100 range.
 var numberStream = numbers(0, 100)
 // And we print it!!
 print(numberStream)
@@ -86,11 +86,11 @@ print(numberStream)
 //      ....
 //
 
-// Oops! Stream keeps printing this numbers infinitely. Right, that's because
-// stream is infinite! So we may have finite and infinite streams and difference
-// is that finite streams end / stop at some point. And if stream stops we need
-// to know when that happens. To do that we will add second, optional `stop`
-// callback argument that MUST be called once stream reach is it's end. Let's
+// Oops! The stream keeps printing these numbers infinitely. Right, that's because
+// a stream is infinite! So we may have finite and infinite streams, the difference
+// being that finite streams end / stop at some point. And if a stream stops we need
+// to know when that happens. To do that we will add a second, optional `stop`
+// callback argument that MUST be called once stream reaches its end. Let's
 // redefine our `print` function with this in mind:
 
 function print(stream) {
@@ -103,8 +103,8 @@ function print(stream) {
 }
 
 // Now we need a stream to print. Instead of creating another basic stream,
-// this time we will take more generic approach, by defining a function that
-// takes array as an argument and returns stream of it's elements:
+// this time we will take more generic approach by defining a function that
+// takes an array as an argument and returns a stream of its elements:
 
 function list(array) {
   return function stream(next, stop) {
@@ -115,14 +115,14 @@ function list(array) {
   }
 }
 
-// Great lets print something now!
+// Great let's print something now!
 
 print(list(1, 2, 3))
 
-// Right, we should have passed, array to the list. Yeah, so shit happens! And
-// when it happens to the stream, it needs to do something about it. Only
-// reasonable thing is to recover, and if not possible then stop itself and
-// report reason of failure. This means that `stop` callback MAY be called
+// Right, we should have passed an array to the list. Yeah, so shit happens! And
+// when it happens to the stream, it needs to do something about it. The only
+// reasonable thing is to recover, and if that is not possible then stop and
+// report the reason of failure. This means that the `stop` callback MAY be called
 // with an error argument, indicating a reason of failure!
 
 // Let's adjust our print and streams to do that:
@@ -139,22 +139,22 @@ function print(stream) {
   })
 }
 
-// Lets make another version of function that returns stream of given elements,
-// in this case though we will use arguments instead of requiring array
-// argument.
+// Let's make another version of a function that returns a stream of given
+// elements, in this case though we will use arguments instead of requiring
+// an array argument.
 function list() {
   // Capture arguments as an array.
   var elements = Array.prototype.slice.call(arguments, 0)
-  // Stream takes two callback arguments, first is called with each element,
-  // when it becomes available, and second after calling first with all the
+  // Stream takes two callback arguments, the first is called with each element
+  // when it becomes available, and the second after calling first with all the
   // elements of the stream.
   return function stream(next, stop) {
-    // Yield each element of the stream by calling `next`. callback.
+    // Yield each element of the stream by calling the `next`. callback.
     elements.forEach(function(element) {
       next(element)
     })
-    // When we reach end we stop a stream by calling `stop` callback if it's
-    // passed.
+    // When we reach the end we stop a stream by calling the `stop` callback
+    // if it's passed.
     if (stop) stop()
   }
 }
@@ -169,22 +169,22 @@ print(list(1, 2, 3))
 //      <<<
 //
 
-// Lets refine our stream definition again:
+// Let's refine our stream definition again:
 
-// _Stream is a function representing sequence of elements. It MAY be read by
-// calling it with one function argument, that will be called every time element
-// when becomes available. Stream takes second optional function argument which
-// is called once stream is stopped, either without arguments when stream runs
-// out of elements or with an error indicating a reason of failure why stream
-// was stopped._
+// _Stream is a function representing a sequence of elements. It MAY be read by
+// calling it with one function argument, that will be called every time an element
+// becomes available. Stream takes a second optional function argument which
+// is called once the stream is stopped, either without arguments when stream runs
+// out of elements or with an error indicating the failure reason indicating why
+// stream was stopped._
 
-// Let's do something interesting from a real life, like stream of all directory
-// entries including entries from all nested directories (lstree).
+// Let's do something interesting from real life, like create a stream of all
+// directory entries including entries from all nested directories (lstree).
 //
-// First we will have to create few stream based wrappers around node's fs
-// functions. We will start with a function that takes path for a directory
-// and returns lazy stream of it's entries. If reading a directory fails we
-// will stop stream with an error:
+// First we will have to create a few stream based wrappers around node's fs
+// functions. We will start with a function that takes the path for a directory
+// and returns a lazy stream of its entries. If reading a directory fails we
+// will stop the stream with an error:
 
 var fs = require("fs")
 function ls(path) {
@@ -202,7 +202,7 @@ function ls(path) {
   }
 }
 
-// Try it out for current working directory:
+// Try it out for the current working directory:
 print(ls('./'))
 
 //      >>>
@@ -215,26 +215,26 @@ print(ls('./'))
 //      tests
 //      <<<
 
-// Next wrapper we will need is, `fs.stat`. We define function that `takes` path
-// and returns lazy stream with only element representing `stat` of the given
-// `path`. Lazy steam with one element can been seen as a promise or deferred,
-// but if don't worry if you are not familiar with that pattern.
+// The next wrapper we will need is `fs.stat`. We define a function that `takes`
+// a path and returns a lazy stream with only an element representing `stat` of
+// the given `path`. A lazy steam with one element can been seen as a promise
+// or deferred, but don't worry if you are not familiar with that pattern.
 function stat(path) {
   return function stream(next, stop) {
     //see: [http://nodejs.org/docs/v0.4.8/api/fs.html#fs.stat](http://nodejs.org/docs/v0.4.8/api/fs.html#fs.stat)
     fs.stat(path, function onStat(error, stats) {
-      // On error we stop a stream with that error.
+      // On error we stop the stream with that error.
       if (error) return stop(error)
-      // We add path to the stat itself as it will be very convenient.
+      // We add the path to the stat itself as it will be very convenient.
       stats.path = path
-      // We yield `stats` and stop a stream.
+      // We yield `stats` and stop the stream.
       next(stats)
       stop()
     })
   }
 }
 
-// Try it out for current working directory:
+// Try it out for the current working directory:
 print(stat('./'))
 //
 //      >>>
@@ -255,13 +255,13 @@ print(stat('./'))
 //      <<<
 //
 
-// Great now we are done with a wrappers. Now we can list entries of the
-// directory, in order to list nested entries we need to distinguish directories
-// form files. To do that we will create a function that takes directory entries
-// stream and returns filtered stream containing only entries that are
+// Great we are done with the wrappers. Now we can list entries of the directory,
+// but in order to list nested entries we need to distinguish directories
+// from files. To do that we will create a function that takes a directory entries
+// stream and returns a filtered stream containing only entries that are
 // directories. We already can get stats from paths, so we just need to map entry
-// paths to stats. Let's make a generic map function that takes stream and mapper
-// function and returns stream of mapped elements.
+// paths to stats. Let's make a generic map function that takes a stream and a
+// mapper function and returns a stream of mapped elements.
 
 function map(source, mapper) {
   return function stream(next, stop) {
@@ -271,7 +271,7 @@ function map(source, mapper) {
   }
 }
 
-// Lets try to map numbers into doubled values:
+// Let's try to map numbers into doubled values:
 print(map(list(1, 2, 3), function(x) { return x * 2 }))
 //
 //      >>>
@@ -281,8 +281,8 @@ print(map(list(1, 2, 3), function(x) { return x * 2 }))
 //      <<<
 //
 
-// Implementing a function now that is equivalent of `ls` with a diff that it
-// returns stream of paths instead of entry filenames.
+// Now we can implement a function that is the equivalent of `ls` with the
+// difference that it returns a stream of paths instead of entry filenames.
 
 var join = require("path").join
 function paths(path) { return map(ls(path), join.bind(null, path)) }
@@ -297,10 +297,10 @@ print(paths(process.cwd()))
 //      <<<
 //
 
-// Now we need another equivalent of `paths` that returns stream of directory
+// Now we need another equivalent of `paths` that returns a stream of directory
 // paths only. To do that we need to filter out directories. So let's implement
-// generic filter function that takes stream of elements and filterer function
-// and returns steam of elements for which filterer returned true.
+// a generic filter function that takes a stream of elements and a filter function
+// and returns the steam of elements for which the filterer returned true.
 function filter(source, filterer) {
   return function stream(next, stop) {
     source(function onElement(element) {
@@ -308,7 +308,7 @@ function filter(source, filterer) {
     }, stop)
   }
 }
-// Simple example for filtering out odd numbers from number stream.
+// Simple example for filtering out odd numbers from a number stream.
 print(filter(list(1, 2, 3, 4), function(x) { return x % 2 }))
 //
 //      >>>
@@ -326,10 +326,10 @@ function dirs(paths) {
   return map(dirStats, function(stat) { return stat.path })
 }
 
-// Unfortunately dir's not going to work, that's because `stats` stream is not
+// Unfortunately dirs not going to work, because the `stats` stream is not
 // a stream of `stat` elements, it is a stream of streams that are streams of
-// `stat` elements. So what we need is sort of flattened version of that stream.
-// This easy to do with another core `merge` function:
+// `stat` elements. So what we need is sort of a flattened version of that stream.
+// This is easy to do with another core `merge` function:
 function merge(source) {
   return function stream(next, stop) {
     var open = 1
@@ -347,7 +347,7 @@ function merge(source) {
   }
 }
 
-// Let's try simple example:
+// Let's try a simple example:
 print(merge(list(list(1, 2), list('a', 'b'))))
 //
 //      >>>
@@ -382,7 +382,7 @@ function lstree(path) {
   return merge(list(entries, nested))
 }
 
-// Crossing a fingers!!
+// Crossing our fingers!!
 print(lstree('./'))
 //
 //      >>>
@@ -394,9 +394,9 @@ print(lstree('./'))
 //
 
 // So let's take a look back now, if we ignore all the core stream functions
-// that are part of [streamer library](https://github.com/Gozala/streamer) and
-// some node `fs` wrappers, we have written code that does deals with recursive
-// asynchronous code, but with code that has a very linear flow. Take another
+// that are part of the [streamer library](https://github.com/Gozala/streamer) and
+// some node `fs` wrappers, we have written code that deals with recursive
+// asynchronous code, but that has a very linear flow. Take another
 // look at it with all the noise removed:
 
 function paths(path) { return map(ls(path), join.bind(null, path)) }
