@@ -54,10 +54,10 @@ exports.list = list
 /*
  * Creates empty stream. This is equivalent of `list()`.
  */
-exports.empty = function empty() {
+function empty() {
   return function stream(next, stop) { return stop && stop() }
 }
-
+exports.empty = empty
 
 /**
  * Returns stream of mapped values.
@@ -157,7 +157,7 @@ exports.reduce = reduce
  *    // [ 'b', 2, '@' ]
  *    // [ 'c', 3, '#' ]
  */
-var zip = exports.zip = (function Zip() {
+var zip = (function Zip() {
   // Returns weather array is empty or not.
   function isEmpty(array) { return !array.length }
   // Utility function that check if each array in given array of arrays
@@ -222,6 +222,7 @@ var zip = exports.zip = (function Zip() {
     }
   }
 })()
+exports.zip = zip
 
 /**
  * Returns stream containing first `n` elements of given `source`, on which
@@ -353,7 +354,7 @@ exports.append = append
  *    // 3
  *    // 'async'
  */
-exports.merge = function merge(source) {
+function merge(source) {
   return function stream(next, stop) {
     var open = 1, alive
     function onStop(error) {
@@ -371,6 +372,7 @@ exports.merge = function merge(source) {
     }, onStop)
   }
 }
+exports.merge = merge
 
 /**
  * Utility function to print streams.
@@ -379,13 +381,14 @@ exports.merge = function merge(source) {
  * @examples
  *    print(list('Hello', 'world'))
  */
-exports.print = function print(stream) {
+function print(stream) {
   console.log('>>')
   stream(console.log.bind(console), function onStop(error) {
     if (error) console.error(error)
     else console.log('<<')
   })
 }
+exports.print = print
 
 /**
  * Returns a stream equivalent to a given `source`, with difference that
@@ -507,5 +510,53 @@ function cache(source) {
   }));
 }
 exports.cache = cache
+
+/**
+ * Returns stream equivalent to a given `source` with a difference that it has
+ * a state, meaning that if reader stops reading on n-th element next reader
+ * will continue reading from n-th element. Purpose is to wrap any other type
+ * of stream, such that each element of `source` can be read only once. This
+ * allow element distribution across different consumers with a help of `head`,
+ * `tail` and similars.
+ * @param {Function} source
+ *    source stream to create stack stream from.
+ * @returns {Function}
+ *    stack equivalent of source that can be read only once.
+ */
+function stack(source) {
+  var readers = [], buffer = [], isStopped = false, isStarted = false, reason
+
+  function update() {
+    if (!buffer.length || !readers.length) return nil
+    var resume = readers[0][0](buffer.shift())
+    if (false === resume) readers.shift()
+    update()
+  }
+
+  function onNext(element) {
+    update(buffer.push(element))
+  }
+
+  function onStop(error) {
+    isStopped = true
+    reason  = error
+    var reader = readers.shift()
+    return reader ? onStop(error, reader[1] && reader[1](error)) : nil
+  }
+
+  return function stream(next, stop) {
+    // If stream is already stopped, we notify a listener.
+    if (isStopped && !buffer.length) return stop && stop(reason)
+
+    readers.push([ next, stop ])
+    update()
+
+    // If `source` stream is not yet being read, start reading it.
+    if (isStarted) return nil
+    isStarted = true
+    source(onNext, onStop)
+  }
+}
+exports.stack = stack
 
 });

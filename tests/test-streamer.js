@@ -18,6 +18,7 @@ exports['test append'] = require('./append.js')
 exports['test merge'] = require('./merge.js')
 exports['test hub'] = require('./hub.js')
 exports['test cache'] = require('./cache.js')
+exports['test stack'] = require('./stack.js')
 
 
 if (module == require.main)

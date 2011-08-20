@@ -1,5 +1,9 @@
 # Changes #
 
+## 0.1.1 / 2011-08-20 ##
+
+  - Adding implementation of `stack`.
+
 ## 0.1.0 / 2011-08-20 ##
 
   - Breaking API by changing argument order in filter / map / reduce functions.
