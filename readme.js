@@ -263,16 +263,16 @@ print(stat('./'))
 // paths to stats. Let's make a generic map function that takes a stream and a
 // mapper function and returns a stream of mapped elements.
 
-function map(source, mapper) {
+function map(lambda, source) {
   return function stream(next, stop) {
     source(function onElement(element) {
-      next(mapper(element))
+      next(lambda(element))
     }, stop)
   }
 }
 
 // Let's try to map numbers into doubled values:
-print(map(list(1, 2, 3), function(x) { return x * 2 }))
+print(map(function(x) { return x * 2 }, list(1, 2, 3)))
 //
 //      >>>
 //      2
@@ -285,7 +285,7 @@ print(map(list(1, 2, 3), function(x) { return x * 2 }))
 // difference that it returns a stream of paths instead of entry filenames.
 
 var join = require("path").join
-function paths(path) { return map(ls(path), join.bind(null, path)) }
+function paths(path) { return map(join.bind(null, path), ls(path)) }
 
 // Test drive:
 print(paths(process.cwd()))
@@ -301,15 +301,15 @@ print(paths(process.cwd()))
 // paths only. To do that we need to filter out directories. So let's implement
 // a generic filter function that takes a stream of elements and a filter function
 // and returns the steam of elements for which the filterer returned true.
-function filter(source, filterer) {
+function filter(lambda, source) {
   return function stream(next, stop) {
     source(function onElement(element) {
-      if (filterer(element)) next(element)
+      if (lambda(element)) next(element)
     }, stop)
   }
 }
 // Simple example for filtering out odd numbers from a number stream.
-print(filter(list(1, 2, 3, 4), function(x) { return x % 2 }))
+print(filter(function(x) { return x % 2 }, list(1, 2, 3, 4)))
 //
 //      >>>
 //      1
@@ -321,9 +321,9 @@ print(filter(list(1, 2, 3, 4), function(x) { return x % 2 }))
 // path or directory path we need to map paths to stats and then filter out
 // only ones from there that are directories:
 function dirs(paths) { 
-  var stats = map(paths, stat)
-  var dirStats = filter(stats, function(stat) { return stat.isDirectory() })
-  return map(dirStats, function(stat) { return stat.path })
+  var stats = map(stat, paths)
+  var dirStats = filter(function(stat) { return stat.isDirectory() }, stats)
+  return map(function(stat) { return stat.path }, dirStats)
 }
 
 // Unfortunately dirs not going to work, because the `stats` stream is not
@@ -361,8 +361,8 @@ print(merge(list(list(1, 2), list('a', 'b'))))
 // Now we can refine our dirs function:
 function dirs(paths) {
   var stats = merge(map(paths, stat))
-  var dirStats = filter(stats, function(stat) { return stat.isDirectory() })
-  return map(dirStats, function(stat) { return stat.path })
+  var dirStats = filter(function(stat) { return stat.isDirectory() }, stats)
+  return map(function(stat) { return stat.path }, dirStats)
 }
 
 // Test drive:
@@ -378,7 +378,7 @@ print(dirs(paths(process.cwd())))
 // Finally we have all we need to implement `lstree`:
 function lstree(path) {
   var entries = paths(path)
-  var nested = merge(map(dirs(entries), lstree))
+  var nested = merge(map(lstree, dirs(entries)))
   return merge(list(entries, nested))
 }
 
@@ -399,15 +399,15 @@ print(lstree('./'))
 // asynchronous code, but that has a very linear flow. Take another
 // look at it with all the noise removed:
 
-function paths(path) { return map(ls(path), join.bind(null, path)) }
+function paths(path) { return map(join.bind(null, path), ls(path)) }
 function dirs(paths) { 
-  var stats = map(paths, stat)
-  var dirStats = filter(stats, function(stat) { return stat.isDirectory() })
-  return map(dirStats, function(stat) { return stat.path })
+  var stats = map(stat, paths)
+  var dirStats = filter(function(stat) { return stat.isDirectory() }, stats)
+  return map(function(stat) { return stat.path }, dirStats)
 }
 function lstree(path) {
   var entries = paths(path)
-  var nested = merge(map(dirs(entries), lstree))
+  var nested = merge(map(lstree, dirs(entries)))
   return merge(list(entries, nested))
 }
 
