@@ -220,6 +220,31 @@ var zip = exports.zip = (function Zip() {
   }
 })()
 
+/**
+ * Returns stream containing first `n` elements of given `source`, on which
+ * given lambda returns `true`.
+ *
+ * @param {Function} lambda
+ *    function that takes elements.
+ * @param {Function} source
+ *    source stream to take elements from.
+ * @examples
+ *    var numbers = list(10, 23, 2, 7, 17)
+ *    var digits = take(function(value) {
+ *      return value >= 10
+ *    }, numbers)
+ *    digits(console.log)
+ *    // 10
+ *    // 23
+ */
+function take(lambda, source) {
+  return function stream(next, stop) {
+    source(function onElement(element) {
+      return lambda(element) ? next(element) : stop() && false
+    }, stop)
+  }
+}
+exports.take = take
 
 /**
  * Returns a stream consisting of the given `source` stream elements starting
