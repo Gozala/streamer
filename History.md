@@ -1,5 +1,14 @@
 # Changes #
 
+## 0.1.0 / 2011-08-20 ##
+
+  - Breaking API by changing argument order in filter / map / reduce functions.
+    This style is more friendly when writing code in functional style. So that
+    high order functions can be defined by currying.
+    `var odds = map.bind(null, function($) { return !($%2) })`
+  - Adding `take` function that is similar to `filter`, but resulting stream
+    contains only first `n` elements that were not filtered out.
+
 ## 0.0.4 / 2011-06-27 ##
 
  - New function `cache` for caching computation intensive streams into memory.
