@@ -3,7 +3,7 @@
          forin: true */
 /*global define: true setTimeout: true */
 
-(typeof define === "undefined" ? function ($) { $(require, exports, module) } : define)(function (require, exports, module, undefined) {
+!(typeof define === "undefined" ? function ($) { $(require, exports, module) } : define)(function (require, exports, module, undefined) {
 
 'use strict';
 
@@ -110,4 +110,4 @@ exports['test interrupt apended stream'] = function(assert) {
 if (module == require.main)
   require('test').run(exports);
 
-})
+});

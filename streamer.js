@@ -3,7 +3,7 @@
          forin: false latedef: false */
 /*global define: true */
 
-(typeof define !== "function" ? function($){ $(require, exports, module); } : define)(function(require, exports, module, undefined) {
+!(typeof define !== "function" ? function($){ $(require, exports, module); } : define)(function(require, exports, module, undefined) {
 
 'use strict';
 
@@ -480,4 +480,4 @@ function cache(source) {
 }
 exports.cache = cache
 
-})
+});
