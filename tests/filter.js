@@ -13,17 +13,17 @@ var test = require('./utils.js').test
 
 exports['test filter empty'] = function(assert, done) {
   var empty = list()
-  var mapped = filter(empty, function onEach(element) {
+  var mapped = filter(function onEach(element) {
     assert.fail('filterer was executed')
-  })
+  }, empty)
   test(assert, done, mapped, [])
 }
 
 exports['test number filter'] = function(assert, done) {
   var numbers = list(1, 2, 3, 4)
-  var evens = filter(numbers, function onElement(number) {
+  var evens = filter(function onElement(number) {
     return !(number % 2)
-  })
+  }, numbers)
   test(assert, done, evens, [2, 4])
 }
 
@@ -35,7 +35,7 @@ exports['test filter with async stream'] = function(assert, done) {
       if (false !== next(x--)) setTimeout(onTimeout, 0)
     }, 0)
   }
-  var odds = filter(stream, function(number) { return number % 2 })
+  var odds = filter(function(number) { return number % 2 }, stream)
   test(assert, done, odds, [ 5, 3, 1 ])
 }
 
@@ -47,7 +47,7 @@ exports['test filter broken stream'] = function(assert, done) {
       if (false !== next(x--)) setTimeout(onTimeout, 0)
     }, 0)
   }
-  var filtered = filter(stream, function(number) { return number % 2 })
+  var filtered = filter(function(number) { return number % 2 }, stream)
   var expected = [ 3, 1 ]
   var actual = []
   filtered(function next(x) { actual.push(x) }, function stop(error) {
@@ -63,7 +63,7 @@ exports['test interrupt reading filtered stream'] = function(assert) {
   var expected = [ 3, 1 ]
   var actual = []
   var stops = []
-  var filtered = filter(stream, function(x) { called++; return x % 2 })
+  var filtered = filter(function(x) { called++; return x % 2 }, stream)
 
   filtered(function next(element) {
     actual.push(element)

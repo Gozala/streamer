@@ -13,17 +13,17 @@ var test = require('./utils.js').test
 
 exports['test reduce on empty'] = function(assert, done) {
   var empty = list()
-  var reduced = reduce(empty, function onEach(element) {
+  var reduced = reduce(function onEach(element) {
     assert.fail('reducer was called on empty list')
-  }, null)
+  }, empty, null)
   test(assert, done, reduced, [ null ])
 }
 
 exports['test reduce to sum'] = function(assert, done) {
   var numbers = list(1, 2, 3, 4)
-  var sum = reduce(numbers, function onElement(previous, current) {
+  var sum = reduce(function onElement(previous, current) {
     return (previous || 0) + current
-  })
+  }, numbers)
   test(assert, done, sum, [ 10 ])
 }
 
@@ -36,9 +36,9 @@ exports['test reduce async stream'] = function(assert, done) {
       setTimeout(onTimeout, 0)
     }, 0)
   }
-  var sum = reduce(stream, function(previous, current) {
+  var sum = reduce(function(previous, current) {
     return previous + current
-  }, 3)
+  }, stream, 3)
   test(assert, done, sum, [ 18 ])
 }
 
@@ -51,9 +51,9 @@ exports['test reduce broken stream'] = function(assert, done) {
       setTimeout(onTimeout, 0)
     }, 0)
   }
-  var sum = reduce(stream, function(x, y) { return x + y })
+  var sum = reduce(function(x, y) { return x + y }, stream)
   sum(function next(x) {
-    assert.fail('should not yield value if stream failed');
+    assert.fail('should not yield value if stream failed')
   }, function stop(error) {
     assert.equal(error.message, 'Boom!', 'error propagated to reduced stream')
     done()

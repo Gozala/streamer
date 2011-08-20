@@ -13,15 +13,15 @@ var test = require('./utils.js').test
 
 exports['test map empty'] = function(assert, done) {
   var empty = list()
-  var mapped = map(empty, function onEach(element) {
+  var mapped = map(function onEach(element) {
     assert.fail('mapper was executed')
-  })
+  }, empty)
   test(assert, done, mapped, [])
 }
 
 exports['test number map'] = function(assert, done) {
   var numbers = list(1, 2, 3, 4)
-  var doubled = map(numbers, function onElement(number) { return number * 2 })
+  var doubled = map(function onElement(number) { return number * 2 }, numbers)
   test(assert, done, doubled, [2, 4, 6, 8])
 }
 
@@ -33,7 +33,7 @@ exports['test map with async stream'] = function(assert, done) {
       if (false !== next(x--)) setTimeout(onTimeout, 0)
     }, 0)
   }
-  var mapped = map(stream, function(x) { return x + 1 })
+  var mapped = map(function(x) { return x + 1 }, stream)
   test(assert, done, mapped, [ 6, 5, 4, 3, 2 ])
 }
 
@@ -45,7 +45,7 @@ exports['test map broken stream'] = function(assert, done) {
       if (false !== next(x--)) setTimeout(onTimeout, 0)
     }, 0)
   }
-  var mapped = map(stream, function(x) { return x * x })
+  var mapped = map(function(x) { return x * x }, stream)
   var expected = [ 9, 4, 1]
   var actual = []
   mapped(function next(x) { actual.push(x) }, function stop(error) {
@@ -61,7 +61,7 @@ exports['test interrupt reading mapped stream'] = function(assert) {
   var expected = [ 9, 4, 1]
   var actual = []
   var stops = []
-  var mapped = map(stream, function(x) { called++; return x * x })
+  var mapped = map(function(x) { called++; return x * x }, stream)
 
   mapped(function next(element) {
     actual.push(element)

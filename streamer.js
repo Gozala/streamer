@@ -7,6 +7,8 @@
 
 'use strict';
 
+var nil // Shortcut for undefined.
+
 /**
  * Internal utility function that takes a `source` function and optional
  * `number` arguments and returns a function that calls `source` with a
@@ -16,7 +18,7 @@
 function limit(source, number) {
   number = number || 1
   return function limited() {
-    return number-- > 0 && source ? source.apply(this, arguments) : undefined
+    return number-- > 0 && source ? source.apply(this, arguments) : nil
   }
 }
 
@@ -59,27 +61,27 @@ exports.empty = function empty() {
 
 /**
  * Returns stream of mapped values.
+ * @param {Function} lambda
+ *    function that maps each value
  * @param {Function} input
  *    source stream to be mapped
- * @param {Function} map
- *    function that maps each value
  * @examples
  *    var stream = list({ name: 'foo' },  { name: 'bar' })
- *    var names = map(stream, function(value) { return value.name })
+ *    var names = map(function(value) { return value.name }, stream)
  *    names(console.log)
  *    // 'foo'
  *    // 'bar'
  *    var numbers = list(1, 2, 3)
- *    var mapped = map(numbers, function onEach(number) { return number * 2 })
+ *    var mapped = map(function onEach(number) { return number * 2 }, numbers)
  *    mapped(console.log)
  *    // 2
  *    // 4
  *    // 6
  */
-function map(source, mapper) {
+function map(lambda, source) {
   return function stream(next, stop) {
     source(function onElement(element) {
-      return next(mapper(element))
+      return next(lambda(element))
     }, stop)
   }
 }
@@ -87,22 +89,23 @@ exports.map = map
 
 /**
  * Returns stream of filtered values.
+ * @param {Function} lambda
+ *    function that filters values
  * @param {Function} source
  *    source stream to be filtered
- * @param {Function} filter
  * @examples
  *    var numbers = list(10, 23, 2, 7, 17)
- *    var digits = filter(numbers, function(value) {
+ *    var digits = filter(function(value) {
  *      return value >= 0 && value <= 9
- *    })
+ *    }, numbers)
  *    digits(console.log)
  *    // 2
  *    // 7
  */
-function filter(source, filterer) {
+function filter(lambda, source) {
   return function stream(next, stop) {
     source(function onElement(element) {
-      return filterer(element) ? next(element) : true
+      return lambda(element) ? next(element) : true
     }, stop)
   }
 }
@@ -118,13 +121,13 @@ exports.filter = filter
  *    initial value
  * @examples
  *    var numbers = list(2, 3, 8)
- *    var sum = reduce(numbers, function onElement(previous, current) {
+ *    var sum = reduce(function onElement(previous, current) {
  *      return (previous || 0) + current
- *    })
+ *    }, numbers)
  *    sum(console.log)
  *    // 13
  */
-function reduce(source, reducer, initial) {
+function reduce(reducer, source, initial) {
   return function stream(next, stop) {
     var value = initial
     source(function onElement(element) {
@@ -264,7 +267,7 @@ function slice(source, start, end) {
       // If index is in range we want to extract from then yield.
       if (index < end) interrupt = next(element)
       // If this is last element we stop stream and interrupt reading
-      return index + 1 >= end ? stop() | false : interrupt
+      return index + 1 >= end ? (stop(), false) : interrupt
     }, stop = limit(stop))
   }
 }
