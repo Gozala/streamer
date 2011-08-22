@@ -558,4 +558,54 @@ function stack(source) {
 }
 exports.stack = stack
 
+/**
+ * Returns a stream that contains all elements of each stream of the given
+ * source stream. `source` is stream of streams whose elements will be contained
+ * by the resulting stream. Any error from any stream will propagate to the
+ * resulting stream. Stream is stopped when all streams from `source` and source
+ * itself are ended. Elements of the stream are position in order, all elements
+ * of first stream, all elements of second stream etc.
+ * @param {Function} source
+ *    Stream of streams whose elements will be contained by resulting stream
+ * @examples
+ *    function async(next, stop) {
+ *      setTimeout(function() {
+ *        next('async')
+ *        stop()
+ *      }, 10)
+ *    }
+ *    var stream = join(list(async, list(1, 2, 3)))
+ *    stream(console.log)
+ *    // 'async'
+ *    // 1
+ *    // 2
+ *    // 3
+ */
+function join(source) {
+  return function stream(next, stop) {
+    var streams = stack(source), open = 2, alive = true, stopped = false
+
+    function onStop(error) {
+      open --
+      if (error && !stopped) open = false, stopped = true, stop(error)
+      else if (!open && !stopped) stopped = true, stop()
+    }
+    !function recur(error) {
+      onStop(error)
+      head(streams)(function onStream(stream) {
+        // Increment number of open steams (twice since we decrement twice
+        // once on stream close and second on slice close).
+        open += 2
+        stream(function onElement(element) {
+          // If steam is still open and read is not interrupted we pipe all
+          // elements to the reader. Otherwise we interrupt reading.
+          return !stopped && open && false !== alive ?
+                 alive = next(element) : false
+        }, recur)
+      }, onStop)
+    }()
+  }
+}
+exports.join = join
+
 });
