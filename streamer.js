@@ -245,7 +245,7 @@ function take(lambda, source) {
   return function stream(next, stop) {
     source(function onElement(element) {
       return lambda(element) ? next(element) : stop() && false
-    }, stop)
+    }, stop = limit(stop))
   }
 }
 exports.take = take
@@ -261,14 +261,11 @@ function slice(source, start, end) {
   // Zero-based index at which to end extraction
   end = end || Infinity
   return function stream(next, stop) {
-    var index = -1, interrupt
-    source(function onElement(element) {
-      // Skip elements until we reach start of the extraction range.
-      if (++index < start) return true
-      // If index is in range we want to extract from then yield.
-      if (index < end) interrupt = next(element)
-      // If this is last element we stop stream and interrupt reading
-      return index + 1 >= end ? (stop(), false) : interrupt
+    var index = 0
+    filter(function(element) {
+      return start <= index ++
+    }, source)(function onElement(element) {
+      return next(element), index >= end ? (stop(), false) : true
     }, stop = limit(stop))
   }
 }
