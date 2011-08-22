@@ -524,13 +524,15 @@ exports.cache = cache
  *    stack equivalent of source that can be read only once.
  */
 function stack(source) {
-  var readers = [], buffer = [], isStopped = false, isStarted = false, reason
+  var readers = [], buffer = [], isStopped = false, isStarted = false, reason,
+      updating = false
 
   function update() {
-    if (!buffer.length || !readers.length) return nil
+    if (updating || !buffer.length || !readers.length) return nil
+    updating = true
     var resume = readers[0][0](buffer.shift())
     if (false === resume) readers.shift()
-    update()
+    update(updating = false)
   }
 
   function onNext(element) {

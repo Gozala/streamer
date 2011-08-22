@@ -7,7 +7,8 @@
 
 'use strict';
 
-var stack = require('../streamer.js').stack
+var streamer = require('../streamer.js'),
+    stack = streamer.stack, list = streamer.list, head = streamer.head
 var utils = require('./utils.js'),
     test = utils.test, pipe = utils.pipe
 
@@ -71,7 +72,7 @@ exports['test stack with error stop'] = function(assert, done) {
 exports['test stack with interrupt'] = function (assert) {
   var readers = [], buffers = [], stops = []
   var stream, source = stack(pipe(readers))
-  
+
   buffers[0] = []
   source(function (element) {
     buffers[0].push(element)
@@ -110,6 +111,55 @@ exports['test stack with interrupt'] = function (assert) {
   assert.deepEqual(buffers[2], [ 'h' ],
                    'read all remaining elements')
   assert.deepEqual(stops, [undefined], 'one stream reader stopped')
+}
+
+exports['test pull form stack on read'] = function(assert, done) {
+  function async(next, stop) {
+    setTimeout(function onTimeout(x) {
+      if (!x) return stop()
+      if (false !== next(x)) setTimeout(onTimeout, 0, --x)
+    }, 0, 3)
+  }
+
+  var source = stack(list(async, list('|'), list('a', 'b'), list())),
+      buffer = [], stops = [], nil
+
+  !function read(callback) {
+    var open = 0
+    head(source)(function(stream) {
+      var elements = []
+      open += 2
+      buffer.push(elements)
+      stream(function(element) {
+        elements.push(element)
+      }, function onStop(error) {
+        open --
+        stops.push(error)
+        if (!open) read(callback)
+      })
+    }, function onStop(error) {
+      open --
+      stops.push(error)
+      if (!open) read(callback)
+      else if (open === -1) callback()
+    })
+  }(function() {
+    assert.deepEqual(buffer, [
+      [ 3, 2, 1 ],
+      ['|'],
+      [ 'a', 'b' ],
+      []
+    ], 'all elements were yielded')
+
+    assert.deepEqual(stops, [
+      nil, nil,
+      nil, nil,
+      nil, nil,
+      nil, nil,
+      nil
+    ], 'stopped as expected')
+    done()
+  })
 }
 
 if (module == require.main)
