@@ -3,6 +3,8 @@
 ## 0.1.1 / 2011-08-20 ##
 
   - Adding implementation of `stack`.
+  - Adding implementation of `join`.
+  - Some internal implementation simplifications.
 
 ## 0.1.0 / 2011-08-20 ##
 
