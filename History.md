@@ -1,5 +1,13 @@
 # Changes #
 
+## 0.2.0 / 2011-09-01 ##
+
+  - Splitting library into two core and experimental modules.
+  - Created clojure style aliases for 'head': 'first', 'pick' and 'tail':
+    'rest'.
+  - Exposing experimental `normilize` and `tree` APIs via
+    'streamer/experimental' module.
+
 ## 0.1.1 / 2011-08-20 ##
 
   - Adding implementation of `stack`.
