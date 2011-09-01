@@ -13,7 +13,7 @@ exports.Assert = function StreamAssert() {
   assert.equalElements = function equalElements(stream, elements, message) {
   }
 }
-var list = require('../streamer.js').list
+var list = require('../core.js').list
 
 function test(assert, expected) {
   var actual = [], isStopped = false

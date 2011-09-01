@@ -7,7 +7,7 @@
 
 'use strict';
 
-var streamer = require('../streamer.js'),
+var streamer = require('../core.js'),
     stack = streamer.stack, list = streamer.list, head = streamer.head
 var utils = require('./utils.js'),
     test = utils.test, pipe = utils.pipe

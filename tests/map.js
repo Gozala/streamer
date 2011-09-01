@@ -7,7 +7,7 @@
 
 'use strict';
 
-var streamer = require('../streamer.js'),
+var streamer = require('../core.js'),
     map = streamer.map, list = streamer.list
 var test = require('./utils.js').test
 

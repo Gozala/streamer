@@ -7,7 +7,7 @@
 
 'use strict';
 
-var list = require('../streamer.js').list
+var list = require('../core.js').list
 var test = require('./utils.js').test
 
 exports['test empty list'] = function(assert, done) {

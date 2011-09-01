@@ -7,7 +7,7 @@
 
 'use strict';
 
-var hub = require('../streamer.js').hub
+var hub = require('../core.js').hub
 var utils = require('./utils.js'),
     test = utils.test, pipe = utils.pipe
 
