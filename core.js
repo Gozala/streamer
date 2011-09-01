@@ -294,7 +294,7 @@ function head(source, number) {
 
   return slice(source, 0, number && number >= 0 ? number : 1)
 }
-exports.head = head
+exports.head = exports.first = exports.peek = head
 
 function tail(source, number) {
   /**
@@ -310,7 +310,7 @@ function tail(source, number) {
 
   return slice(source, number && number >= 0 ? number : 1)
 }
-exports.tail = tail
+exports.tail = exports.rest = tail
 
 function append() {
   /**
