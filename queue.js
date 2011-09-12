@@ -26,7 +26,9 @@ _.initialize = function initialize(target) {
 
 function update(_stream) {
   var buffer = _stream.buffer, next = _stream.next, stop = _stream.stop
-  if (buffer.length) next(buffer.shift())
+  if (next && buffer.length) {
+    if (false === next(buffer.shift()) _stream.stop = _stream.next = null
+  }
   return _stream.stopped ? stop && stop(_stream.reason) : update(_stream)
 }
 
