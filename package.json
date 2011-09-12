@@ -1,7 +1,7 @@
 {
   "name": "streamer",
   "id": "streamer",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Asynchronously recursive, pure function <3 via lazy streams.",
   "keywords": [ "stream", "functional", "spaghetti", "lazy", "iteration", "async" ],
   "author": "Irakli Gozalishvili <rfobic@gmail.com>",

@@ -1,5 +1,10 @@
 # Changes #
 
+## 0.2.1 / 2011-09-12 ##
+
+  - Update documentation.
+  - Improvements & tests for `tree` API.
+
 ## 0.2.0 / 2011-09-01 ##
 
   - Splitting library into two core and experimental modules.
