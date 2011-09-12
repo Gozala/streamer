@@ -8,7 +8,7 @@
 'use strict';
 
 var core = require('./core'),
-    map = core.map, merge = core.merge, list = core.list
+    map = core.map, merge = core.merge, list = core.list, append = core.append
 
 function normalize(source) {
   /**
@@ -38,10 +38,16 @@ function tree(isBranch, children, root) {
   node of the tree.
   **/
 
-  return isBranch(root) ? merge(map(function walk(node) {
-    return isBranch(node) ? tree(isBranch, children, children(node)) :
-                            list(node)
-  }, children(root))) : list(root)
+  return (function walk(node) {
+    return function stream(next, stop) {
+      var $ = isBranch(node)
+      !(typeof($) === 'function' ? $ : list($))(function(isBranch) {
+        (isBranch ?
+         append(list(node), merge(map(walk, children(node)))) :
+         list(node))(next, stop)
+      })
+    }
+  })(root)
 }
 exports.tree = tree
 
