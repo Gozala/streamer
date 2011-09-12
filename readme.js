@@ -29,11 +29,10 @@ function stream(next) {
 stream(function onEach(element) {
   console.log(element)
 })
-//
+
 //      1
 //      2
 //      3
-//
 
 // Or, we can create a convenience
 // [high-order function](http://en.wikipedia.org/wiki/Higher-order_function)
@@ -47,11 +46,10 @@ function print(stream) {
 
 // And, print stream with it:
 print(stream)
-//
+
 //      1
 //      2
 //      3
-//
 
 // Good, but!
 // Stream is a sequence of elements **made available over time**.
@@ -79,12 +77,11 @@ function numbers(min, max) { // Another high-order function to make streams
 var numberStream = numbers(0, 100)
 // And we print it!!
 print(numberStream)
-//
+
 //      29
 //      33
 //      45
 //      ....
-//
 
 // Oops! The stream keeps printing these numbers infinitely. Right, that's because
 // a stream is infinite! So we may have finite and infinite streams, the difference
@@ -161,13 +158,12 @@ function list() {
 
 // Another attempt to print:
 print(list(1, 2, 3))
-//
+
 //      >>>
 //      1
 //      2
 //      3
 //      <<<
-//
 
 // Let's refine our stream definition again:
 
@@ -236,7 +232,7 @@ function stat(path) {
 
 // Try it out for the current working directory:
 print(stat('./'))
-//
+
 //      >>>
 //      { dev: 234881026,
 //      ino: 19933437,
@@ -253,7 +249,6 @@ print(stat('./'))
 //      ctime: Thu, 09 Jun 2011 12:48:32 GMT,
 //      path: './' }
 //      <<<
-//
 
 // Great we are done with the wrappers. Now we can list entries of the directory,
 // but in order to list nested entries we need to distinguish directories
@@ -273,13 +268,12 @@ function map(lambda, source) {
 
 // Let's try to map numbers into doubled values:
 print(map(function(x) { return x * 2 }, list(1, 2, 3)))
-//
+
 //      >>>
 //      2
 //      4
 //      6
 //      <<<
-//
 
 // Now we can implement a function that is the equivalent of `ls` with the
 // difference that it returns a stream of paths instead of entry filenames.
@@ -289,13 +283,12 @@ function paths(path) { return map(join.bind(null, path), ls(path)) }
 
 // Test drive:
 print(paths(process.cwd()))
-//
+
 //      >>>
 //      /Users/gozala/Projects/streamer/History.md
 //      /Users/gozala/Projects/streamer/package.json
 //      ...
 //      <<<
-//
 
 // Now we need another equivalent of `paths` that returns a stream of directory
 // paths only. To do that we need to filter out directories. So let's implement
@@ -310,12 +303,11 @@ function filter(lambda, source) {
 }
 // Simple example for filtering out odd numbers from a number stream.
 print(filter(function(x) { return x % 2 }, list(1, 2, 3, 4)))
-//
+
 //      >>>
 //      1
 //      3
 //      <<<
-//
 
 // Awesome, going back to our problem, to figure out weather we have a file
 // path or directory path we need to map paths to stats and then filter out
@@ -349,14 +341,13 @@ function merge(source) {
 
 // Let's try a simple example:
 print(merge(list(list(1, 2), list('a', 'b'))))
-//
+
 //      >>>
 //      1
 //      2
 //      a
 //      b
 //      <<<
-//
 
 // Now we can refine our dirs function:
 function dirs(paths) {
@@ -367,7 +358,7 @@ function dirs(paths) {
 
 // Test drive:
 print(dirs(paths(process.cwd())))
-//
+
 //      >>>
 //      /Users/gozala/Projects/streamer/.git
 //      /Users/gozala/Projects/streamer/node_modules
