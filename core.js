@@ -149,23 +149,6 @@ function reduce(reducer, source, initial) {
 exports.reduce = reduce
 
 var zip = (function Zip() {
-  /**
-  This function returns stream of tuples, where the n-th tuple contains the
-  n-th element from each of the argument streams. The returned stream is
-  truncated in length to the length of the shortest argument stream.
-  @params {Function}
-     source steams to be combined
-  @examples
-     var a = list([ 'a', 'b', 'c' ])
-     var b = list([ 1, 2, 3, 4 ])
-     var c = list([ '!', '@', '#', '$', '%' ])
-     var abc = zip(a, b, c)
-     abs(console.log)
-     // [ 'a', 1, '!' ]
-     // [ 'b', 2, '@' ]
-     // [ 'c', 3, '#' ]
-  **/
-
   // Returns weather array is empty or not.
   function isEmpty(array) { return !array.length }
   // Utility function that check if each array in given array of arrays
@@ -180,6 +163,23 @@ var zip = (function Zip() {
   }
 
   return function zip() {
+    /**
+    This function returns stream of tuples, where the n-th tuple contains the
+    n-th element from each of the argument streams. The returned stream is
+    truncated in length to the length of the shortest argument stream.
+    @params {Function}
+       source steams to be combined
+    @examples
+       var a = list([ 'a', 'b', 'c' ])
+       var b = list([ 1, 2, 3, 4 ])
+       var c = list([ '!', '@', '#', '$', '%' ])
+       var abc = zip(a, b, c)
+       abs(console.log)
+       // [ 'a', 1, '!' ]
+       // [ 'b', 2, '@' ]
+       // [ 'c', 3, '#' ]
+    **/
+
     var sources = Array.prototype.slice.call(arguments)
     return function stream(next, stop) {
       var buffers = [], id, reason, isStopped = false, shortest
