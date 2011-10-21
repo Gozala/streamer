@@ -22,7 +22,7 @@ exports['test take more than have'] = function(assert, done) {
 }
 
 exports['test take on async stream'] = function(assert, done) {
-  var stream = delay(list(5, 4, 3, 3, 1))
+  var stream = delay(list(5, 4, 3, 2, 1))
   test(assert, done, take(3, stream), [ 5, 4, 3 ])
 }
 
@@ -34,7 +34,7 @@ exports['test take before error'] = function(assert, done) {
   test(assert, done, take(3, stream), [ 3, 2, 1 ])
 }
 
-exports['test erro on take'] = function(assert, done) {
+exports['test error on take'] = function(assert, done) {
   var error = Error('Boom!')
    var stream = delay(append(list(3, 2, 1), function broken(next) {
     next(error)
