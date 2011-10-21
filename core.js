@@ -145,10 +145,10 @@ function filter(lambda, source) {
   **/
 
   return function stream(next) {
-    source(function onNext(head, tail) {
+    source(function interfere(head, tail) {
       !tail ? next(head, tail) :
       lambda(head) ? next(head, filter(lambda, tail)) :
-      filter(lambda, tail)(onNext)
+      filter(lambda, tail)(next)
     })
   }
 }
