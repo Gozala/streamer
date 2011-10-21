@@ -108,27 +108,25 @@ function alter(lambda, source, state) {
 }
 exports.alter = alter
 
-function take(number, source) {
+function take(n, source) {
   /**
   Returns stream containing first `n` elements of given `source` stream.
 
-  @param {Number} number
+  @param {Number} n
     Number of elements to take.
   @param {Function} source
     source stream to take elements from.
   @examples
      var numbers = list(10, 23, 2, 7, 17)
-     var digits = take(2, numbers)
-     digits(console.log)
+     take(2, numbers)(console.log)
      // 10
      // 23
   **/
-
-  return alter(function(head, tail, next, state) {
-    if (--state.pending < 0) next()
-    else if (tail) next(head, tail)
-    else next(head)
-  }, source, { pending: number })
+  return function stream(next) {
+    source(function(head, tail) {
+      n ? next(head, tail ? take(n - 1, tail) : tail) : next()
+    })
+  }
 }
 exports.take = take
 
