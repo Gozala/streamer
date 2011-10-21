@@ -7,6 +7,29 @@
 
 'use strict';
 
+function iterate(lambda, x) {
+  return function stream(next) {
+    next(x, iterate(lambda, lambda(x)))
+  }
+}
+exports.iterate = iterate
+
+function stream(first, rest) {
+  return function stream(next) {
+    next(first, rest)
+  }
+}
+exports.stream = stream
+
+function loop(lambda, condition, source) {
+  source(function(head, tail) {
+    if (condition(head, tail)) {
+      lambda(head)
+      loop(lambda, condition, tail)
+    }
+  })
+}
+
 function list() {
   /**
   Creates stream of given elements.
@@ -29,6 +52,113 @@ function empty(next) {
   next()
 }
 exports.empty = empty
+
+function head(source, number) {
+  /**
+  Returns a stream containing only first `number` of elements of the given
+  `source` stream or all elements, if `source` stream has less than `number`
+  of elements. If `number` is not passed it defaults to `1`.
+  @param {Function} source
+     source stream
+  @param {Number} number=1
+     number of elements to take from stream
+  **/
+
+  return function stream(next) {
+    source(function interfere(head, tail) {
+      next(head, empty)
+    })
+  }
+}
+exports.head = exports.first = exports.peek = head
+
+function tail(source, number) {
+  /**
+  Returns a stream equivalent to given `source` stream, except that the first
+  `number` of elements are omitted. If `source` stream has less than `number`
+  of elements, then empty stream is returned. `number` defaults to `1` if it's
+  not passed.
+  @param {Function} source
+     source stream to return tail of.
+  @param {Number} number=1
+     Number of elements that will be omitted.
+  **/
+
+  return function stream(next) {
+    source(function interfere(head, tail) {
+      tail(next)
+    })
+  }
+}
+exports.tail = exports.rest = tail
+
+function alter(lambda, source, state) {
+  /*
+  Returns altered copy of `source` stream, that has modified elements, size,
+  behavior. Give `lambda` performs modifications depending on the curried
+  `state`.
+  **/
+  return function stream(next) {
+    source(function interfere(head, tail) {
+      lambda(head, tail, function forward(head, tail) {
+        next(head, tail ? alter(lambda, tail, state) : tail)
+      }, state)
+    })
+  }
+}
+exports.alter = alter
+
+function take(number, source) {
+  /**
+  Returns stream containing first `n` elements of given `source`, on which
+  given lambda returns `true`.
+
+  @param {Number} number
+    Number of elements to take.
+  @param {Function} source
+    source stream to take elements from.
+  @examples
+     var numbers = list(10, 23, 2, 7, 17)
+     var digits = take(2, numbers)
+     digits(console.log)
+     // 10
+     // 23
+  **/
+
+  return alter(function(head, tail, next, state) {
+    if (--state.pending < 0) next()
+    else if (tail) next(head, tail)
+    else next(head)
+  }, source, { pending: number })
+}
+exports.take = take
+
+function filter(lambda, source) {
+  /**
+  Returns stream of filtered values.
+  @param {Function} lambda
+    function that filters values
+  @param {Function} source
+    source stream to be filtered
+  @examples
+    var numbers = list(10, 23, 2, 7, 17)
+    var digits = filter(function(value) {
+      return value >= 0 && value <= 9
+    }, numbers)
+    digits(console.log)
+    // 2
+    // 7
+  **/
+
+  return function stream(next) {
+    source(function interfere(head, tail) {
+      !tail ? next(head, tail) :
+      lambda(head) ? next(head, filter(lambda, tail)) :
+      filter(lambda, tail)(next)
+    })
+  }
+}
+exports.filter = filter
 
 function mapone(lambda, source) {
   /**
@@ -127,49 +257,6 @@ function map(lambda, source) {
 }
 exports.map = map
 
-function filter(lambda, source) {
-  /**
-  Returns stream of filtered values.
-  @param {Function} lambda
-    function that filters values
-  @param {Function} source
-    source stream to be filtered
-  @examples
-    var numbers = list(10, 23, 2, 7, 17)
-    var digits = filter(function(value) {
-      return value >= 0 && value <= 9
-    }, numbers)
-    digits(console.log)
-    // 2
-    // 7
-  **/
-
-  return function stream(next) {
-    source(function interfere(head, tail) {
-      !tail ? next(head, tail) :
-      lambda(head) ? next(head, filter(lambda, tail)) :
-      filter(lambda, tail)(next)
-    })
-  }
-}
-exports.filter = filter
-
-function alter(lambda, source, state) {
-  /*
-  Returns altered copy of `source` stream, that has modified elements, size,
-  behavior. Give `lambda` performs modifications depending on the curried
-  `state`.
-  **/
-  return function stream(next) {
-    source(function interfere(head, tail) {
-      lambda(head, tail, function forward(head, tail) {
-        next(head, tail ? alter(lambda, tail, state) : tail)
-      }, state)
-    })
-  }
-}
-exports.alter = alter
-
 /*
 function reduce(reducer, source, initial) {
   /**
@@ -226,31 +313,6 @@ function zip() {
 }
 exports.zip = zip
 
-function take(number, source) {
-  /**
-  Returns stream containing first `n` elements of given `source`, on which
-  given lambda returns `true`.
-
-  @param {Number} number
-    Number of elements to take.
-  @param {Function} source
-    source stream to take elements from.
-  @examples
-     var numbers = list(10, 23, 2, 7, 17)
-     var digits = take(2, numbers)
-     digits(console.log)
-     // 10
-     // 23
-  **/
-
-  return alter(function(head, tail, next, state) {
-    if (--state.pending < 0) next()
-    else if (tail) next(head, tail)
-    else next(head)
-  }, source, { pending: number })
-}
-exports.take = take
-
 function on(source) {
   /**
   Function takes a stream and returns function that can register `next` and
@@ -269,44 +331,6 @@ function on(source) {
 }
 exports.on = on
 
-function head(source, number) {
-  /**
-  Returns a stream containing only first `number` of elements of the given
-  `source` stream or all elements, if `source` stream has less than `number`
-  of elements. If `number` is not passed it defaults to `1`.
-  @param {Function} source
-     source stream
-  @param {Number} number=1
-     number of elements to take from stream
-  **/
-
-  return function stream(next) {
-    source(function interfere(head, tail) {
-      next(head, empty)
-    })
-  }
-}
-exports.head = exports.first = exports.peek = head
-
-function tail(source, number) {
-  /**
-  Returns a stream equivalent to given `source` stream, except that the first
-  `number` of elements are omitted. If `source` stream has less than `number`
-  of elements, then empty stream is returned. `number` defaults to `1` if it's
-  not passed.
-  @param {Function} source
-     source stream to return tail of.
-  @param {Number} number=1
-     Number of elements that will be omitted.
-  **/
-
-  return function stream(next) {
-    source(function interfere(head, tail) {
-      tail(next)
-    })
-  }
-}
-exports.tail = exports.rest = tail
 
 function append(source1, source2, source3) {
   /**
