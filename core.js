@@ -86,7 +86,7 @@ function tail(source, number) {
 
   return function stream(next) {
     source(function interfere(head, tail) {
-      tail(next)
+      tail ? tail(next) : next(head)
     })
   }
 }
