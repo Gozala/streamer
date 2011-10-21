@@ -7,9 +7,11 @@
 
 'use strict';
 
+var on = require('../core').on
+
 exports.test = function test(assert, done, stream, expected, reason) {
   var actual = []
-  stream(function next(element) {
+  on(stream)(function next(element) {
     actual.push(element)
   }, function stop(error) {
     assert.deepEqual(error, reason, 'stream is stopped as expected')
