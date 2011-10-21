@@ -130,6 +130,28 @@ function take(n, source) {
 }
 exports.take = take
 
+function drop(n, source) {
+  /**
+  Returns stream of all, but the first `n` elements of the given `source`
+  stream.
+  @param {Number} n
+    Number of elements to take.
+  @param {Function} source
+    source stream to take elements from.
+  @examples
+     var numbers = list(10, 23, 2, 7, 17)
+     drop(3, numbers)(console.log)
+     // 10
+     // 23
+  **/
+  return function stream(next) {
+    source(function(head, tail) {
+      (tail && n) ? drop(n - 1, tail)(next) : next(head, tail)
+    })
+  }
+}
+exports.drop = drop
+
 function filter(lambda, source) {
   /**
   Returns stream of filtered values.
