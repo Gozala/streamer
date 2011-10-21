@@ -66,7 +66,7 @@ function head(source, number) {
 
   return function stream(next) {
     source(function interfere(head, tail) {
-      next(head, empty)
+      next(head, tail ? empty : tail)
     })
   }
 }
