@@ -8,15 +8,16 @@
 'use strict';
 
 var streamer = require('../core.js'),
-    filter = streamer.filter, list = streamer.list
+    filter = streamer.filter, list = streamer.list, on = streamer.on,
+    delay = streamer.delay, append = streamer.append
 var test = require('./utils.js').test
 
 exports['test filter empty'] = function(assert, done) {
   var empty = list()
-  var mapped = filter(function onEach(element) {
+  var filtered = filter(function onEach(element) {
     assert.fail('filterer was executed')
   }, empty)
-  test(assert, done, mapped, [])
+  test(assert, done, filtered, [])
 }
 
 exports['test number filter'] = function(assert, done) {
@@ -28,55 +29,20 @@ exports['test number filter'] = function(assert, done) {
 }
 
 exports['test filter with async stream'] = function(assert, done) {
-  function stream(next, stop) {
-    var x = 5
-    setTimeout(function onTimeout() {
-      if (!x) return stop()
-      if (false !== next(x--)) setTimeout(onTimeout, 0)
-    }, 0)
-  }
+  var stream = delay(list(5, 4, 3, 2, 1))
   var odds = filter(function(number) { return number % 2 }, stream)
   test(assert, done, odds, [ 5, 3, 1 ])
 }
 
 exports['test filter broken stream'] = function(assert, done) {
-  function stream(next, stop) {
-    var x = 3
-    setTimeout(function onTimeout() {
-      if (!x) return stop(new Error('Boom!'))
-      if (false !== next(x--)) setTimeout(onTimeout, 0)
-    }, 0)
-  }
+  var error = Error('Boom!')
+  var stream = delay(append(list(3, 2, 1), function(next) {
+    next(error)
+  }))
   var filtered = filter(function(number) { return number % 2 }, stream)
   var expected = [ 3, 1 ]
-  var actual = []
-  filtered(function next(x) { actual.push(x) }, function stop(error) {
-    assert.equal(error.message, 'Boom!', 'error propagated to filtered stream')
-    assert.deepEqual(actual, expected, 'all values were yielded before error')
-    done()
-  })
+  test(assert, done, filtered, expected, error)
 }
-
-exports['test interrupt reading filtered stream'] = function(assert) {
-  var stream = list(3, 2, 1, 0)
-  var called = 0
-  var expected = [ 3, 1 ]
-  var actual = []
-  var stops = []
-  var filtered = filter(function(x) { called++; return x % 2 }, stream)
-
-  filtered(function next(element) {
-    actual.push(element)
-    if (element === 1) return false
-  }, function stop(reason) {
-    stops.push(reason)
-  })
-
-  assert.equal(stops.length, 0, 'stream is not stopped if we interrupt read')
-  assert.equal(called, 3, 'map is called expected times')
-  assert.deepEqual(actual, expected, 'mapped as expected')
-}
-
 
 if (module == require.main)
   require('test').run(exports);
