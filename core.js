@@ -31,14 +31,18 @@ function iterate(lambda, value) {
 }
 exports.iterate = iterate
 
-function loop(lambda, condition, source) {
-  source(function(head, tail) {
-    if (condition(head, tail)) {
-      lambda(head)
-      loop(lambda, condition, tail)
-    }
-  })
+function repeat(value, n) {
+  /**
+  Returns a stream of `n` `value`s. If `n` is not provided returns infinite
+  stream of `value`s.
+  **/
+
+  n = n || Infinity
+  return function stream(next) {
+    n ? next(value, repeat(value, n - 1)) : next()
+  }
 }
+exports.repeat = repeat
 
 function list() {
   /**
