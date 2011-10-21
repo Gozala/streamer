@@ -12,7 +12,7 @@
     "web": "https://github.com/Gozala/streamer"
   },
   "bugs": {
-    "web": "http://github.com/Gozala/streamer/issues/"
+    "url": "http://github.com/Gozala/streamer/issues/"
   },
   "devDependencies": {
     "test": ">=0.2.0"
