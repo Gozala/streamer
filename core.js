@@ -396,13 +396,14 @@ function flatten(sources) {
      // 2
      // 3
   **/
-  return alter(function forward(head, tail, next, state) {
-    head || tail ? next(head, tail) :
-    !state.tail ? next() :
-    state.tail(function(head, tail) {
-      (state.tail = tail) ? alter(forward, head, tail)(next) : next(head, tail)
+  return function stream(next) {
+    sources(function forward(source, sources) {
+      !sources ? next(source, sources) : source(function interfere(head, tail) {
+        tail ? next(head, flatten(exports.stream(tail, sources))) :
+        head ? next(head, tail) : flatten(sources)(next)
+      })
     })
-  }, empty, { tail: sources })
+  }
 }
 exports.flatten = flatten
 
