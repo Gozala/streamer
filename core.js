@@ -618,4 +618,14 @@ function lazy(source) {
 }
 exports.lazy = lazy
 
+function delay(source, time) {
+  time = time || 1
+  return function stream(next) {
+    source(function forward(head, tail) {
+      setTimeout(next, time, head, tail ? delay(tail, time) : tail)
+    })
+  }
+}
+exports.delay = delay
+
 });
