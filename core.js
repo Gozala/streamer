@@ -110,8 +110,7 @@ exports.alter = alter
 
 function take(number, source) {
   /**
-  Returns stream containing first `n` elements of given `source`, on which
-  given lambda returns `true`.
+  Returns stream containing first `n` elements of given `source` stream.
 
   @param {Number} number
     Number of elements to take.
