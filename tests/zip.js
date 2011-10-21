@@ -8,7 +8,8 @@
 'use strict';
 
 var streamer = require('../core.js'),
-    zip = streamer.zip, list = streamer.list
+    zip = streamer.zip, list = streamer.list, delay = streamer.delay,
+    append = streamer.append
 var test = require('./utils.js').test
 
 exports['test zip with empty'] = function(assert, done) {
@@ -27,13 +28,7 @@ exports['test zip 2 lists'] = function(assert, done) {
 }
 
 exports['test zip sync stream with async stream'] = function(assert, done) {
-  function a(next, stop) {
-    var x = 5
-    setTimeout(function onTimeout() {
-      if (!x) return stop()
-      if (false !== next(x--)) setTimeout(onTimeout, 0)
-    }, 0)
-  }
+  var a = delay(list(5, 4, 3, 2, 1))
   var b = list('a', 'b', 'c', 'd', 'e')
   var c = list('~', '@', '!', '#')
 
@@ -48,13 +43,8 @@ exports['test zip sync stream with async stream'] = function(assert, done) {
 }
 
 exports['test zip with late error'] = function(assert, done) {
-  function stream(next, stop) {
-    var x = 3
-    setTimeout(function onTimeout() {
-      if (!x) return stop(new Error('Boom!'))
-      if (false !== next(x--)) setTimeout(onTimeout, 0)
-    }, 0)
-  }
+  var error = Error('boom')
+  var stream = delay(append(list(3, 2, 1), function(next) { next(error) }))
   var letters = list('a', 'b', 'c')
   var zipped = zip(letters, stream)
 
@@ -66,44 +56,13 @@ exports['test zip with late error'] = function(assert, done) {
 }
 
 exports['test zip with early error'] = function(assert, done) {
-  function stream(next, stop) {
-    var x = 3
-    setTimeout(function onTimeout() {
-      if (!x) return stop(new Error('Boom!'))
-      if (false !== next(x--)) setTimeout(onTimeout, 0)
-    }, 0)
-  }
+  var error = Error('Boom!!')
+  var stream = delay(append(list(3, 2, 1), function(next) { next(error) }))
   var letters = list('a', 'b', 'c', 'd')
-  var zipped = zip(stream, letters)
-  var buffer = []
-  zipped(function onTuple(tuple) {
-    buffer.push(tuple)
-  }, function onStop(error) {
-    assert.deepEqual(buffer, [
-      [ 3, 'a' ],
-      [ 2, 'b' ],
-      [ 1, 'c' ]
-    ], 'Stream yielded all tuples in right order before error in source stream')
-    assert.equal(error.message, 'Boom!', 'Stream is stopped with error')
-    done()
-  })
-}
+  var actual = zip(stream, letters)
+  var expected = [ [ 3, 'a' ], [ 2, 'b' ], [ 1, 'c' ] ]
 
-exports['test interrupt zipped stream'] = function(assert) {
-  var letters = list('a', 'b', 'c', 'd')
-  var numbers = list(1, 2, 3, 3, 5)
-  var zipped = zip(numbers, letters)
-  var buffer = []
-  var stopped = []
-  zipped(function onTuple(tuple) {
-    buffer.push(tuple)
-    if (buffer.length === 4) return false
-  }, function onStop(error) {
-    stopped.push(error)
-  })
-  assert.equal(stopped.length, 0, 'interrupted streams do not stop')
-  assert.deepEqual(buffer, [ [1, 'a'], [ 2, 'b' ], [ 3, 'c' ], [ 3, 'd' ] ],
-                   'stream yielded elements until it was interrupted')
+  test(assert, done, actual, expected, error)
 }
 
 if (module == require.main)
