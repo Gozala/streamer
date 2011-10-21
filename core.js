@@ -365,12 +365,13 @@ function append(source1, source2, source3) {
      // 'a'
      // 'b'
   **/
-
-  return alter(function forward(head, tail, next, sources) {
-    head || tail ? next(head, tail) :
-    !sources.length ? next() :
-    alter(forward, sources.shift(), sources)(next)
-  }, arguments[0], Array.prototype.slice.call(arguments, 1))
+  var sources = Array.prototype.slice.call(arguments)
+  return function stream(next) {
+    !sources.length ? next() : sources[0](function forward(head, tail) {
+      tail ? next(head, append.apply(null, [tail].concat(sources.slice(1)))) :
+      head ? next(head, tail) : append.apply(null, sources.slice(1))(next)
+    })
+  }
 }
 exports.append = append
 
