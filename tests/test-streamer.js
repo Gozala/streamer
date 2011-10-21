@@ -18,10 +18,11 @@ exports['test zipmap'] = require('./zipmap')
 exports['test zip'] = require('./zip')
 exports['test append'] = require('./append')
 exports['test flatten'] = require('./flatten')
+/*
 exports['test merge'] = require('./merge')
 exports['test hub'] = require('./hub')
 exports['test lazy'] = require('./lazy')
-
+*/
 
 if (module == require.main)
   require('test').run(exports)
