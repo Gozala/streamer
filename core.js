@@ -52,7 +52,7 @@ function mapone(lambda, source) {
   **/
 
   return function stream(next) {
-    source(function onNext(head, tail) {
+    source(function interfere(head, tail) {
       tail ? next(lambda(head), mapone(lambda, tail)) : next(head, tail)
     })
   }
@@ -85,7 +85,7 @@ function zipmap(lambda) {
     index = -1, length = sources.length, waiting = length
 
     while (++index < length) {
-      sources[index](function(index, head, tail) {
+      sources[index](function interfere(index, head, tail) {
         if (!closed) {
           if (tail) {
             heads[index] = head
@@ -281,7 +281,7 @@ function head(source, number) {
   **/
 
   return function stream(next) {
-    source(function onNext(head, tail) {
+    source(function interfere(head, tail) {
       next(head, empty)
     })
   }
@@ -301,7 +301,7 @@ function tail(source, number) {
   **/
 
   return function stream(next) {
-    source(function onNext(head, tail) {
+    source(function interfere(head, tail) {
       tail(next)
     })
   }
