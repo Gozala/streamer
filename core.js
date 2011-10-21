@@ -7,19 +7,29 @@
 
 'use strict';
 
-function iterate(lambda, x) {
+function stream(head, tail) {
+  /**
+  Returns a stream who's first element is `head` and all the rest elements
+  are elements of `tail` stream.
+  **/
   return function stream(next) {
-    next(x, iterate(lambda, lambda(x)))
-  }
-}
-exports.iterate = iterate
-
-function stream(first, rest) {
-  return function stream(next) {
-    next(first, rest)
+    next(head, tail)
   }
 }
 exports.stream = stream
+
+
+function iterate(lambda, value) {
+  /**
+  Returns a stream of `value, lambda(value), lambda(lambda(value))` etc.
+  `lambda` must be free of side-effects.
+  **/
+
+  return function stream(next) {
+    next(value, iterate(lambda, lambda(value)))
+  }
+}
+exports.iterate = iterate
 
 function loop(lambda, condition, source) {
   source(function(head, tail) {
