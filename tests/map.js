@@ -7,9 +7,10 @@
 
 'use strict';
 
-var streamer = require('../core.js'),
-    map = streamer.map, list = streamer.list
-var test = require('./utils.js').test
+var streamer = require('../core'),
+    map = streamer.map, list = streamer.list, append = streamer.append,
+    on = streamer.on, delay = streamer.delay
+var test = require('./utils').test
 
 exports['test map empty'] = function(assert, done) {
   var empty = list()
@@ -26,53 +27,20 @@ exports['test number map'] = function(assert, done) {
 }
 
 exports['test map with async stream'] = function(assert, done) {
-  function stream(next, stop) {
-    var x = 5
-    setTimeout(function onTimeout() {
-      if (!x) return stop()
-      if (false !== next(x--)) setTimeout(onTimeout, 0)
-    }, 0)
-  }
+  var stream = delay(list(5, 4, 3, 2, 1))
   var mapped = map(function(x) { return x + 1 }, stream)
   test(assert, done, mapped, [ 6, 5, 4, 3, 2 ])
 }
 
 exports['test map broken stream'] = function(assert, done) {
-  function stream(next, stop) {
-    var x = 3
-    setTimeout(function onTimeout() {
-      if (!x) return stop(new Error('Boom!'))
-      if (false !== next(x--)) setTimeout(onTimeout, 0)
-    }, 0)
-  }
+  var error = Error('Boom!')
+  var stream = delay(append(list(3, 2, 1), function(next) {
+    next(error)
+  }))
   var mapped = map(function(x) { return x * x }, stream)
   var expected = [ 9, 4, 1]
-  var actual = []
-  mapped(function next(x) { actual.push(x) }, function stop(error) {
-    assert.equal(error.message, 'Boom!', 'error propagated to mapped stream')
-    assert.deepEqual(actual, expected, 'all values were yielded before error')
-    done()
-  })
-}
 
-exports['test interrupt reading mapped stream'] = function(assert) {
-  var stream = list(3, 2, 1, 0)
-  var called = 0
-  var expected = [ 9, 4, 1]
-  var actual = []
-  var stops = []
-  var mapped = map(function(x) { called++; return x * x }, stream)
-
-  mapped(function next(element) {
-    actual.push(element)
-    if (actual.length === 3) return false
-  }, function stop(reason) {
-    stops.push(reason)
-  })
-
-  assert.equal(stops.length, 0, 'stream is not stopped if we interrupt read')
-  assert.equal(called, expected.length, 'map is called expected times')
-  assert.deepEqual(actual, expected, 'mapped as expected')
+  test(assert, done, mapped, expected, error);
 }
 
 if (module == require.main)
