@@ -664,6 +664,10 @@ function lazy(source) {
 exports.lazy = lazy
 
 function delay(source, time) {
+  /**
+  Takes a `source` stream and return stream of it's elements, such that each
+  element yield is delayed with a given `time` (defaults to 1) in milliseconds.
+  **/
   time = time || 1
   return function stream(next) {
     source(function forward(head, tail) {
