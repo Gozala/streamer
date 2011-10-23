@@ -372,8 +372,23 @@ function flatten(sources) {
 }
 exports.flatten = flatten
 
+function promise() {
+  var observers = [], head, tail, delivered
+  return Object.defineProperties(function stream(next) {
+    delivered ? next(head, tail) : observers.push(next)
+  }, {
+    deliver: { value: function deliver(first, rest) {
+      if (delivered) return
+      delivered = true
+      head = first
+      tail = rest
+      while (observers.length) observers.shift()(head, tail)
+    }
+  }})
+}
+exports.promise = promise
 
-function mix(source1, source2, source3) {
+function mix(source, source2, source3) {
   /**
   Returns a stream that contains all elements of each stream in the order those
   elements are delivered. This is somewhat parallel version of `append`, since
@@ -386,42 +401,26 @@ function mix(source1, source2, source3) {
      var stream = append(list(1, 2), list('a', 'b'))
      stream(console.log)
      // 1
-     // 2
      // 'a'
+     // 2
      // 'b'
   **/
-  var sources = Array.prototype.slice.call(arguments)
+  var sources = Array.prototype.slice.call(arguments, 1)
   return function stream(next) {
-    var tails = sources.slice(), heads = [], error, closed, waiting = 0
+    // Nothing to mix
+    if (!source) return next()
+    // Mix of one stream is a stream itself.
+    if (!sources.length) return source(next)
 
-    !function rest(next) {
-      next = [ next ]
-      // If closed just pass the error.
-      if (closed) return next.shift()(error)
-      // If head is already cached just forward it.
-      if (heads.length) return next.shift()(heads.shift(), rest)
+    var first, second, promises = [ first = promise(), second = promise() ]
+    function deliver(head, tail) { promises.shift().deliver(head, tail) }
+    source(deliver)
+    mix.apply(null, sources)(deliver)
 
-      // If tails are already enqueued & head has not being forwarded yet
-      // we start reading from each until we get a head.
-      while (tails.length && next.length) {
-        waiting = waiting + 1
-        tails.shift()(function(head, tail) {
-          waiting = waiting - 1
-          if (tail) {
-            tails.push(tail)
-            heads.push(head)
-          } else if (head) {
-            closed = true
-            error = head
-          }
-          if (next.length) rest(next.shift())
-        })
-      }
-
-      // If item has not being forwarded yet and there's nothing left to
-      // wait for we close the stream.
-      if (!waiting && next.length) next.shift()()
-    }(next)
+    first(function forward(head, tail) {
+      tail ? next(head, mix(second, tail)) :
+      head ? next(head) : second(next)
+    })
   }
 }
 exports.mix = mix
