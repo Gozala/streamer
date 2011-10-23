@@ -106,22 +106,6 @@ function tail(source, number) {
 }
 exports.tail = exports.rest = tail
 
-function alter(lambda, source, state) {
-  /*
-  Returns altered copy of `source` stream, that has modified elements, size,
-  behavior. Give `lambda` performs modifications depending on the curried
-  `state`.
-  **/
-  return function stream(next) {
-    source(function interfere(head, tail) {
-      lambda(head, tail, function forward(head, tail) {
-        next(head, tail ? alter(lambda, tail, state) : tail)
-      }, state)
-    })
-  }
-}
-exports.alter = alter
-
 function take(n, source) {
   /**
   Returns stream containing first `n` elements of given `source` stream.
@@ -289,39 +273,6 @@ function map(lambda, source) {
                                 : zipmap.apply(null, arguments)
 }
 exports.map = map
-
-/*
-function reduce(reducer, source, initial) {
-  /**
-  Returns stream of reduced values
-  @param {Function} source
-     stream to reduce.
-  @param {Function} reducer
-     reducer function
-  @param initial
-     initial value
-  @examples
-     var numbers = list(2, 3, 8)
-     var sum = reduce(function onElement(previous, current) {
-       return (previous || 0) + current
-     }, numbers)
-     sum(console.log)
-     // 13
-  ** /
-
-  return function stream(next, stop) {
-    var value = initial
-    source(function onElement(element) {
-      value = reducer(value, element)
-    }, function onStop(error) {
-      if (error) return stop(error)
-      next(value)
-      if (stop) stop()
-    })
-  }
-}
-exports.reduce = reduce
-*/
 
 function zip() {
   /**
