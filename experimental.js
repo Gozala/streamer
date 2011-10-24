@@ -107,34 +107,6 @@ function tree(isBranch, children, root) {
 }
 exports.tree = tree
 
-function smash() {
-  /**
-  Returns a stream that contains all elements of each stream in the order they
-  appear in the original streams. If any of the `source` streams is stopped
-  with an error, it will just move to another stream.
-  @examples
-     var stream = smash(list(1, 2),
-                        function(next, stop) { stop('boom') },
-                        list('a', 'b'))
-     stream(console.log)
-     // 1
-     // 2
-     // 'a'
-     // 'b'
-  **/
-
-  var streams = Array.prototype.slice.call(arguments, 0)
-  return function stream(next, stop) {
-    var source, sources = streams.slice(0)
-    function onStop(error) {
-      if ((source = sources.shift())) source(next, onStop)
-      else return stop && stop(error)
-    }
-    onStop()
-  }
-}
-exports.smash = smash
-
 function strainer(lambda, source) {
 }
 exports.strainer = strainer
@@ -182,6 +154,29 @@ function dequeue(elements, consumers, closed, tail) {
 }
 
 function queue() {
+  /**
+  @examples
+
+    use('./experimental', { reload: true })
+    q1 = queue(1, 2, 3)
+    m1 = map(function($) { return 'm1 -> ' + $ }, q1)
+    m2 = map(function($) { return 'm2 -> ' + $ }, q1)
+
+    print(m1)
+    print(m2)
+
+    enqueue(q1, 4)
+
+    enqueue(q1, 5, 6, 7)
+
+    m3 = map(function($) { return 'm3 -> ' + $ }, q1)
+    print(take(2, m3))
+
+    enqueue(q1, 8, 9, 10)
+
+    enqueue(q1)
+  **/
+
   var error, closed, consumers = [],
       elements = Array.prototype.slice.call(arguments)
 
@@ -230,45 +225,30 @@ exports.close = close
 // Examples
 
 function ones(next) {
+  /**
+  Stream of number ones
+  **/
   return next(1, ones)
 }
-
-function increment(number) { return ++number }
+exports.ones = ones
 
 function numbers(next) {
-  next(1, map(increment, numbers))
+  /**
+  Stream of numbers: 1, 2, 3, 4, 5, ....
+  **/
+  next(1, map(function increment(number) { return ++number }, numbers))
 }
+exports.numbers = numbers
 
-function sum(a, b) {
-  return a + b
+function fibs() {
+  /**
+  Returns stream of Fibonacci numbers.
+  **/
+  var stream = lazy(append(list(0, 1), function rest(next) {
+    map(function sum(a, b) { return a + b }, stream, tail(stream))(next)
+  }))
+  return stream
 }
-
-/*
-var fibs = lazy(append(list(1, 2), function(next) {
-  map(sum, fibs, tail(fibs))(next)
-}))
-
-
-/** examples
-use('./lazy', { reload: true })
-q1 = queue(1, 2, 3)
-m1 = map(function($) { return 'm1 -> ' + $ }, q1)
-m2 = map(function($) { return 'm2 -> ' + $ }, q1)
-
-print(m1)
-print(m2)
-
-enqueue(q1, 4)
-
-enqueue(q1, 5, 6, 7)
-
-m3 = map(function($) { return 'm3 -> ' + $ }, q1)
-print(take(2, m3))
-
-enqueue(q1, 8, 9, 10)
-
-enqueue(q1)
-*/
-
+exports.fibs = fibs
 
 });
