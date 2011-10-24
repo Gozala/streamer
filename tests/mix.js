@@ -44,7 +44,7 @@ exports['test mix & remix'] = function(assert, done) {
   test(assert, done, actual, expected)
 }
 
-exports['test map broken stream'] = function(assert, done) {
+exports['test mix broken stream'] = function(assert, done) {
   var boom = Error('Boom!!')
   function broken(next) { next(boom) }
   var async = delay(mix(list(3, 2, 1), broken))
