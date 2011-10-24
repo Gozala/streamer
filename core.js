@@ -425,7 +425,7 @@ function mix(source, source2, source3) {
 }
 exports.mix = mix
 
-function merge(source) {
+function merge(sources) {
   /**
   Takes `source` stream of streams and returns stream that contains all
   elements of each element stream in the order they are delivered. This is
@@ -451,49 +451,9 @@ function merge(source) {
      // 'async'
   **/
   return function stream(next) {
-    var sources = streams, heads = [], tails = [], waiting = 0, error, closed
-
-    !function rest(next) {
-      next = [ next ]
-
-      if (closed) return next.shift()(error)
-      if (heads.length) return next.shift()(heads.shift(), rest)
-
-      while (tails.length && next.length) {
-        waiting = waiting + 1
-        tails.shift()(function(head, tail) {
-          waiting = waiting - 1
-          if (tail) {
-            tails.push(tail)
-            heads.push(head)
-          } else if (head) {
-            closed = true
-            error = head
-          }
-
-          if (next.length) rest(next.shift())
-        })
-      }
-
-      while (next.length && sources) {
-        waiting = waiting + 1
-        sources(function(head, tail) {
-          waiting = waiting - 1
-          sources = tail
-
-          if (!tail && head) {
-            closed = true
-            error = head
-          } else if (head) {
-            tails.push(head)
-          }
-
-          if (next.length) rest(next.shift())
-        })
-      }
-
-      if (!waiting && next.length) next.shift()()
-    }(next)
+    sources(function forward(source, sources) {
+      !sources ? next(source, sources) : mix(source, merge(sources))(next)
+    })
   }
 }
 exports.merge = merge
