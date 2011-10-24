@@ -537,18 +537,21 @@ function hub(source) {
 
      // Notice this time second print only printed only following elements.
   **/
-
-  var consumers = [], active
   return function stream(next) {
-    consumers.push(next)
-    if (!active) {
-      active = true
-      source(function(head, tail) {
-        source = tail
-        var observers = consumers.splice(0)
-        while (observers.length) observers.shift()(head, tail ? stream : tail)
-      })
-    }
+    // Create promise for the head, tail pair of the source stream.
+    var promised = promise()
+    source(function(head, tail) {
+      // If `tail` exists, then update state (override `source`, so that all
+      // new subscribers start reading from there). Otherwise `source` is
+      // exhausted, in this case keep `source` as is so that all new
+      // subscribers get same end.
+      source = tail || source
+      // Deliver the `promise`, with `head` and same hub `stream`, but with
+      // updated state. If there is no tail just forward it.
+      promised.deliver(head, tail ? stream : tail)
+    })
+    // Register `subscriber` by reading from stream promise.
+    promised(next)
   }
 }
 exports.hub = hub
