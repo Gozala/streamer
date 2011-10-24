@@ -7,94 +7,118 @@
 
 'use strict';
 
-var streamer = require('../core.js'),
-    cache = streamer.cache, list = streamer.list
-var utils = require('./utils.js'),
-    test = utils.test, pipe = utils.pipe, read = utils.read
+var streamer = require('../core'),
+    lazy = streamer.lazy, list = streamer.list, delay = streamer.delay,
+    append = streamer.append, stream = streamer.stream, take = streamer.take
 
-exports['test cache an empty list'] = function(assert, done) {
-  test(assert, done, cache(list()), [])
+var test = require('./utils').test
+
+exports['test lazy empty list'] = function(assert, done) {
+  test(assert, done, lazy(list()), [])
 }
 
 exports['test number list'] = function(assert, done) {
-  test(assert, done, cache(list(1, 2, 3)), [ 1, 2, 3 ])
+  test(assert, done, lazy(list(1, 2, 3)), [ 1, 2, 3 ])
 }
 
 exports['test mixed list'] = function(assert, done) {
-  var object = {}, func = function() {}, exp = /foo/, error = new Error('Boom!')
-  test(assert, done, cache(list('a', 2, 'b', 4, object, func, exp, error)),
+  var error = Error('Boom!'), object = {}, func = function() {}, exp = /foo/
+  test(assert, done, lazy(list('a', 2, 'b', 4, object, func, exp, error)),
        [ 'a', 2, 'b', 4, object, func, exp, error  ])
 }
 
-exports['test read cache before source is stopped'] = function(assert) {
-  var readers = [], stops = []
-  var stream = cache(pipe(readers)), source = readers[0]
+exports['test caching in lazy'] = function(assert) {
+  var reads = 0, errors = 0, error = Error('Boom')
+  var actual = lazy(stream(1, function tail(next) {
+    reads = reads + 1
+    next(2, function(next) {
+      errors = errors + 1
+      next(error)
+    })
+  }))
 
-  // Start reading before there is anything being cached form source.
-  var buf1 = read(stream, stops.push.bind(stops))
-  source.next('a')
-  source.next('b')
+  test(assert, function() {
+    assert.equal(reads, 0, 'tail have not being accessed yet')
+  }, take(1, actual), [ 1 ])
 
-  // Start reading before source is stopped.
-  var buf2 = read(stream, stops.push.bind(stops))
+  test(assert, function() {
+    assert.equal(reads, 1, 'tail was accessed once')
+  }, take(2, actual), [ 1, 2 ])
 
-  source.next('c')
-  source.next('d')
-  source.stop('Boom!')
+  test(assert, function() {
+    assert.equal(reads, 1, 'tail was cached')
+    assert.equal(errors, 0, 'error is not yielded yet')
+  }, take(2, actual), [ 1, 2 ])
 
-  // Start reading after source is stopped.
-  var buf3 = read(stream, stops.push.bind(stops))
+  test(assert, function() {
+    assert.equal(reads, 1, 'tail was cached')
+    assert.equal(errors, 1, 'error was yielded')
+  }, actual, [ 1, 2 ], error)
 
-  assert.equal(readers.length, 1, 'source stream is read only once')
-  assert.deepEqual(stops, [ 'Boom!', 'Boom!', 'Boom!' ],
-                   'All streams were stopped with a same reason')
-  assert.deepEqual(buf1, ['a', 'b', 'c', 'd' ],
-                   'reading before cached includes all elements from source')
-  assert.deepEqual(buf1, buf2,
-                   'reading cache before and while it is cached is same')
-  assert.deepEqual(buf1, buf3,
-                   'reading cache before and after it is cached is same')
-
+  test(assert, function() {
+    assert.equal(reads, 1, 'tail was cached')
+    assert.equal(errors, 1, 'error was cached')
+  }, actual, [ 1, 2 ], error)
 }
 
-exports['test interrupt reading from cache'] = function(assert) {
-  var readers = [], stops = []
-  var stream = cache(pipe(readers)), source = readers[0]
+exports['test async but lazy'] = function(assert, done) {
+  var reads = 0, errors = 0, error = Error('Boom')
+  var actual = lazy(delay(stream(1, function tail(next) {
+    reads = reads + 1
+    next(2, function(next) {
+      errors = errors + 1
+      next(error)
+    })
+  })))
 
-  // Start reading before there is anything being cached form source.
-  var buf1 = read(stream, stops.push.bind(stops))
-  var buf1sub = read(stream, stops.push.bind(stops), 3)
-  source.next('a')
-  source.next('b')
+  var steps = [
+    function on_first_read_async(next) {
+      test(assert, next, take(1, actual), [ 1 ])
+    },
+    function on_next_read_sync(next, turned) {
+      assert.ok(turned, 'element was yielded on next turn')
+      test(assert, next, take(1, actual), [ 1 ])
+    },
+    function second_read_sync(next, turned) {
+      assert.ok(!turned, 'head was cashed')
+      assert.equal(reads, 0, 'tail have not being accessed yet')
+      test(assert, next, take(2, actual), [ 1, 2 ])
+    },
+    function(next, turned) {
+      assert.ok(turned, 'element was yielded on next turn')
+      assert.equal(reads, 1, 'tail was accessed once')
+      test(assert, next, take(2, actual), [ 1, 2 ])
+    },
+    function(next, turned) {
+      assert.ok(!turned, 'tail was cashed')
+      assert.equal(reads, 1, 'tail was cached')
+      assert.equal(errors, 0, 'error is not yielded yet')
+      test(assert, next, actual, [ 1, 2 ], error)
+    },
+    function(next, turned) {
+      assert.ok(turned, 'element was yielded on next turn')
+      assert.equal(reads, 1, 'tail was cached')
+      assert.equal(errors, 1, 'error was yielded')
 
-  // Start reading before source is stopped.
-  var buf2 = read(stream, stops.push.bind(stops))
-  var buf2sub = read(stream, stops.push.bind(stops), 2)
+      test(assert, next, actual, [ 1, 2 ], error)
+    },
+    function(next, turned) {
+      assert.ok(!turned, 'tail was cached')
 
-  source.next('c')
-  source.next('d')
-  source.stop()
+      assert.equal(reads, 1, 'tail was cached')
+      assert.equal(errors, 1, 'error was cached')
+      done()
+    }
+  ]
 
-  // Start reading after source is stopped.
-  var buf3 = read(stream, stops.push.bind(stops))
-  var buf3sub = read(stream, stops.push.bind(stops), 4)
-
-  assert.equal(readers.length, 1, 'source stream is read only once')
-  assert.deepEqual(stops, [ undefined, undefined, undefined ],
-                   'All streams were stopped with a same reason')
-  assert.deepEqual(buf1, ['a', 'b', 'c', 'd' ],
-                   'reading before cached includes all elements from source')
-  assert.deepEqual(buf1, buf2,
-                   'reading cache before and while it is cached is same')
-  assert.deepEqual(buf1, buf3,
-                   'reading cache before and after it is cached is same')
-
-  assert.deepEqual(buf1sub, [ 'a', 'b', 'c' ],
-                   'reading before cached includes all read elements')
-  assert.deepEqual(buf2sub, [ 'a', 'b' ],
-                   'reading during cacheing includes all read elements')
-  assert.deepEqual(buf3sub, [ 'a', 'b', 'c', 'd' ],
-                   'reading after cached includes all read elements')
+  function next() {
+    var turned = false
+    steps.shift()(function() {
+      steps.shift()(next, turned)
+    }, turned)
+    turned = true
+  }
+  next()
 }
 
 if (module == require.main)
