@@ -584,21 +584,15 @@ function lazy(source) {
      lazy equivalent of the given source.
   **/
 
-  var first, rest, ready = null, observers = []
-
-  function deliver(head, tail) {
-    if (!ready) {
-      first = head
-      rest = tail ? lazy(tail) : tail
-      ready = true
-
-      while (observers.length) observers.shift()(first, rest)
-    }
-  }
-
+  var promised
   return function stream(next) {
-    ready ? next(first, rest) : observers.push(next)
-    if (ready === null) (ready = false, source(deliver))
+    if (!promised) {
+      promised = promise()
+      source(function(head, tail) {
+        deliver(promised, head, tail ? lazy(tail) : tail)
+      })
+    }
+    promised(next)
   }
 }
 exports.lazy = lazy
