@@ -7,109 +7,83 @@
 
 'use strict';
 
-var hub = require('../core.js').hub
-var utils = require('./utils.js'),
-    test = utils.test, pipe = utils.pipe
+var streamer = require('../core'),
+    hub = streamer.hub, delay = streamer.delay, list = streamer.list,
+    append = streamer.append, take = streamer.take
+var test = require('./utils').test
 
-function copy(source) {
-  var buffer = [], reason;
-  source(function onElement(element) {
-    buffer.push(element)
-  }, function onStop(error) {
-    reason = error
-  })
-  return function stream(next, stop) {
-    var index = 0, length = buffer.length
-    while (index < length) next(buffer[index++])
-    if (stop) stop(reason)
-  }
+exports['test hub with sync steam'] = function(assert, done) {
+  var source = hub(list(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14))
+
+  var s1_3 = take(3, source)
+  var s4_8 = take(5, source)
+  var s9_$ = source
+
+  test(assert, Object, s1_3, [ 1, 2, 3 ])
+  test(assert, Object, s4_8, [ 4, 5, 6, 7, 8 ])
+  test(assert, done, s9_$, [ 9, 10, 11, 12, 13, 14 ])
 }
 
-exports['test hub with normal stop'] = function(assert, done) {
-  var readers = [], copies = []
-  var source = hub(pipe(readers)), stream = readers[0]
+exports['test hub with async stream'] = function(assert, done) {
+  var source = hub(delay(list(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)))
 
-  stream.next(1)
-  copies.push(copy(source))
-  stream.next('a')
-  stream.next('b')
-  copies.push(copy(source))
-  stream.next(2)
-  stream.next('last')
-  stream.stop()
-  copies.push(copy(source))
+  var steps = [
+    function first_run() {
+      test(assert, next, take(3, source), [ 1, 2, 3 ])
+    },
+    function take_0_3() {
+      test(assert, next, take(5, source), [ 4, 5, 6, 7, 8 ])
+      test(assert, next, take(8, source), [ 4, 5, 6, 7, 8, 9, 10, 11 ])
+    },
+    function take_4_8() {
+      test(assert, next, source, [ 9, 10, 11, 12, 13, 14 ])
+    },
+    function take_4_11() {
+      test(assert, next, source, [ 12, 13, 14 ])
+    },
+    function take_8_$() {
+      test(assert, next, source, [])
+    },
+    function take_11_$() {
+      test(assert, next, source, [])
+    },
+    function take_$$() {},
+    function take_$$() { done() }
+  ]
 
-  assert.equal(readers.length, 1, "stream was read only once")
-  test(assert, Object, copies[0], [ 'a', 'b', 2, 'last'])
-  test(assert, Object, copies[1], [ 2, 'last' ])
-  test(assert, done, copies[2], [])
+  function next() { steps.shift()() }
+  next()
 }
 
-exports['test hub with error stop'] = function(assert, done) {
-  var readers = [], copies = [], error = new Error('boom')
-  var source = hub(pipe(readers)), stream = readers[0]
 
-  stream.next(1)
-  copies.push(copy(source))
-  stream.next('a')
-  stream.next('b')
-  copies.push(copy(source))
-  stream.next(2)
-  stream.next('last')
-  stream.stop(error)
-  copies.push(copy(source))
+exports['test hub with broken stream'] = function(assert, done) {
+  var error = Error('boom!')
+  var source = hub(append(delay(list(1, 2, 3, 4, 5, 6, 7, 8)), function(next) {
+    next(error)
+  }))
 
-  assert.equal(readers.length, 1, "stream was read only once")
-  test(assert, Object, copies[0], [ 'a', 'b', 2, 'last'], error)
-  test(assert, Object, copies[1], [ 2, 'last' ], error)
-  test(assert, done, copies[2], [], error)
-}
+  var steps = [
+    function first_run() {
+      test(assert, next, take(4, source), [ 1, 2, 3, 4 ])
+      test(assert, next, source, [ 1, 2, 3, 4, 5, 6, 7, 8 ], error)
+    },
+    function take_0_4() {
+      test(assert, next, take(5, source), [ 5, 6, 7, 8 ], error)
+      test(assert, next, take(3, source), [ 5, 6, 7 ])
+    },
+    function take_5_7() {
+      test(assert, next, take(1, source), [ 8 ])
+      test(assert, next, take(2, source), [ 8 ], error)
+    },
+    function take_7_8() {},
+    function take_1_$e() {},
+    function take_4_8e() { test(assert, next, source, [], error) },
+    function take_7_8e() {},
+    function take_$_$e() { done() }
+  ]
 
-exports['test hub with interrupt'] = function (assert) {
-  var readers = [], buffers = [], stops = []
-  var source = hub(pipe(readers)), stream = readers[0]
-
-  stream.next('a')
-  stream.next('b')
-
-  buffers[0] = []
-  source(function (element) {
-    buffers[0].push(element)
-    if (buffers[0].length === 3) return false
-  }, stops.push.bind(stops))
-
-  stream.next('c')
-  stream.next('d')
-
-  buffers[1] = []
-  source(function (element) {
-    buffers[1].push(element)
-    if (buffers[1].length === 4) return false
-  }, stops.push.bind(stops))
-
-  stream.next('e')
-
-  buffers[2] = []
-  source(function (element) {
-    buffers[2].push(element)
-    if (buffers[2].length === 4) return false
-  }, stops.push.bind(stops))
-
-
-
-  stream.next('f')
-  stream.next('g')
-  stream.next('h')
-  stream.stop()
-
-  assert.deepEqual(buffers[0], [ 'c', 'd', 'e' ],
-                   'interrupted after 3 elements')
-  assert.deepEqual(buffers[1], [ 'e', 'f', 'g', 'h' ],
-                   'interrupted after 4 elemens')
-  assert.deepEqual(buffers[2], [ 'f', 'g', 'h' ],
-                   'read all remaining elements')
-  assert.deepEqual(stops, [undefined], 'one stream reader stopped')
-
+  function next() { steps.shift()() }
+  next()
 }
 
 if (module == require.main)

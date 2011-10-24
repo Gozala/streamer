@@ -20,8 +20,8 @@ exports['test append'] = require('./append')
 exports['test flatten'] = require('./flatten')
 exports['test mix'] = require('./mix')
 exports['test merge'] = require('./merge')
-/*
 exports['test hub'] = require('./hub')
+/*
 exports['test lazy'] = require('./lazy')
 */
 
