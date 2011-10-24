@@ -8,6 +8,7 @@
 'use strict';
 
 exports['test list'] = require('./list')
+exports['test iterate'] = require('./iterate')
 exports['test repeat'] = require('./repeat')
 exports['test head'] = require('./head')
 exports['test tail'] = require('./tail')
