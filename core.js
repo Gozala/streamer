@@ -121,8 +121,8 @@ function take(n, source) {
      // 23
   **/
   return function stream(next) {
-    source(function(head, tail) {
-      n ? next(head, tail ? take(n - 1, tail) : tail) : next()
+    !n ? next() : source(function(head, tail) {
+      next(head, tail ? take(n - 1, tail) : tail)
     })
   }
 }
