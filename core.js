@@ -373,11 +373,16 @@ function flatten(sources) {
 exports.flatten = flatten
 
 function promise() {
+  /**
+  Creates stream promise, that will yield it's head, tail once promise as soon
+  as promise is delivered, by calling `deliver` on promise with a desired
+  `head` and `tail`.
+  **/
   var observers = [], head, tail, delivered
   return Object.defineProperties(function stream(next) {
     delivered ? next(head, tail) : observers.push(next)
   }, {
-    deliver: { value: function deliver(first, rest) {
+    _deliver: { value: function deliver(first, rest) {
       if (delivered) return
       delivered = true
       head = first
@@ -387,6 +392,14 @@ function promise() {
   }})
 }
 exports.promise = promise
+
+function deliver(promise, head, tail) {
+  /**
+  Deliver given `head` & `tail` to the given `promise`.
+  **/
+  promise._deliver(head, tail)
+}
+exports.deliver = deliver
 
 function mix(source, source2, source3) {
   /**
@@ -413,9 +426,9 @@ function mix(source, source2, source3) {
     if (!sources.length) return source(next)
 
     var first, second, promises = [ first = promise(), second = promise() ]
-    function deliver(head, tail) { promises.shift().deliver(head, tail) }
-    source(deliver)
-    mix.apply(null, sources)(deliver)
+    function forward(head, tail) { deliver(promises.shift(), head, tail) }
+    source(forward)
+    mix.apply(null, sources)(forward)
 
     first(function forward(head, tail) {
       tail ? next(head, mix(second, tail)) :
@@ -548,7 +561,7 @@ function hub(source) {
       source = tail || source
       // Deliver the `promise`, with `head` and same hub `stream`, but with
       // updated state. If there is no tail just forward it.
-      promised.deliver(head, tail ? stream : tail)
+      deliver(promised, head, tail ? stream : tail)
     })
     // Register `subscriber` by reading from stream promise.
     promised(next)
