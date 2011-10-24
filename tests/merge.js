@@ -8,7 +8,8 @@
 'use strict';
 
 var streamer = require('../core.js'),
-    merge = streamer.merge, list = streamer.list
+    merge = streamer.merge, list = streamer.list, delay = streamer.delay,
+    append = streamer.append
 var test = require('./utils.js').test
 
 exports['test merge stream of empty streams'] = function(assert, done) {
@@ -22,91 +23,32 @@ exports['test merge empty & non-empty'] = function(assert, done) {
 exports['test merge merged'] = function(assert, done) {
   var stream = merge(list(list(1, 2), list('a', 'b')))
   stream = merge(list(list('>'), stream, list()))
-  test(assert, done, stream, ['>', 1, 2, 'a', 'b'])
+  test(assert, done, stream, ['>', 1, 'a', 2, 'b'])
 }
 
 exports['test merge sync & async streams'] = function(assert, done) {
-  function async(next, stop) {
-    var x = 3
-    setTimeout(function onTimeout() {
-      if (!x) return stop()
-      if (false !== next(x--)) setTimeout(onTimeout, 0)
-    }, 0)
-  }
-
-  var stream = merge(list(async, list(), list('a', 'b')))
-  test(assert, done, stream, [ 'a', 'b', 3, 2, 1 ])
+  var async = delay(list(3, 2, 1))
+  var actual = merge(list(async, list(), async, list('a', 'b')))
+  test(assert, done, actual, [ 'a', 'b', 3, 3, 2, 2, 1, 1, ])
 }
 
 exports['test merge with broken stream'] = function(assert, done) {
-  var buffer = []
-  function async(next, stop) {
-    var x = 3
-    setTimeout(function onTimeout() {
-      if (!x) return stop(new Error("Boom!"))
-      if (false !== next(x--)) setTimeout(onTimeout, 0)
-    }, 0)
-  }
-  
-  var stream = merge(list(list('>'), async, list(1, 2) ))
-  stream(function next(x) { buffer.push(x) }, function stop(error) {
-    assert.equal(error.message, 'Boom!', 'error propagated')
-    assert.deepEqual(buffer, [ '>', 1, 2, 3, 2, 1 ],
-                     'all values were yielded before error')
-    done()
-  })
+  var boom = Error('Boom!!')
+  function broken(next) { next(boom) }
+  var async = delay(append(list(3, 2, 1), broken))
+
+  var stream = merge(list(list('>'), async, list(1, 2), async))
+
+  test(assert, done, stream, [ '>', 1, 2, 3, 3, 2, 2, 1, 1 ], boom)
 }
 
 exports['test merge async stream of streams'] = function(assert, done) {
-  function async(next, stop) {
-    var x = 3
-    setTimeout(function onTimeout() {
-      if (!x) return stop()
-      if (false !== next(x--)) setTimeout(onTimeout, 0)
-    }, 0)
-  }
-  function source(next, stop) {
-    var x = 3
-    next(list())
-    next(list(1, 2))
-    setTimeout(function onTimeout() {
-      if (!x) return next(async) || stop()
-      if (false !== next(list('a', x--))) setTimeout(onTimeout, 0)
-    }, 0)
-  }
+  var async = delay(list(3, 2, 1))
+  var actual = merge(append(delay(list(list(), async, list(1, 2), async)),
+                     list(list('a', 'b')), list(list(), list('C', 'D'))))
+  var expected = [ 3, 1, 2, 2, 1, 3, 'a', 'C', 'b', 'D', 2, 1 ]
 
-  test(assert, done, merge(source), [1, 2, 'a', 3, 'a', 2, 'a', 1, 3, 2, 1])
-}
-
-exports['test interrupt merged stream'] = function(assert) {
-  var stream = merge(list(list(1, 2, 3), list(), list('a', 'b'), list('!')))
-  var buffer = []
-  var stopped = []
-  stream(function onNext(element) {
-    buffer.push(element)
-    if (buffer.length === 3) return false
-  }, stopped.push.bind(stopped))
-
-  assert.deepEqual(buffer, [ 1, 2, 3 ],
-                   'stream yielded elements until it was interrupted')
-
-  buffer = []
-  stream(function onNext(element) {
-    buffer.push(element)
-    if (buffer.length === 4) return false
-  }, stopped.push.bind(stopped))
-  assert.deepEqual(buffer, [ 1, 2, 3, 'a' ],
-                   'stream yielded elements until it was interrupted')
-
-  buffer = []
-  stream(function onNext(element) {
-    buffer.push(element)
-    if (buffer.length === 6) return false
-  }, stopped.push.bind(stopped))
-  assert.deepEqual(buffer, [ 1, 2, 3, 'a', 'b', '!' ],
-                   'stream yielded elements until it was interrupted')
-
-  assert.equal(stopped.length, 0, 'interrupted streams do not stop')
+  test(assert, done, actual, expected)
 }
 
 if (module == require.main)
