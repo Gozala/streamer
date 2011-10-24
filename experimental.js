@@ -26,6 +26,20 @@ function alter(lambda, source, state) {
 }
 exports.alter = alter
 
+function future(source) {
+  /**
+  Takes a stream and rushes to pre-cache it, so that for the moment returned
+  stream will be read it's head and tail will be ready. This is useful when
+  reading from multiple streams in parallel. Please note that only one consumer
+  may read from the resulting stream.
+  **/
+
+  var stream = promise()
+  source(function forward(head, tail) { deliver(stream, head, tail )})
+  return stream
+}
+exports.future = future
+
 /*
 function reduce(reducer, source, initial) {
   /**
