@@ -1,7 +1,7 @@
 <html>
   <head>
     <title>test</title>
-    <script type="text/javascript" src="https://raw.github.com/Gozala/teleport/experimental/npm-1.x.x/teleport.js"></script>
+    <script type="text/javascript" src="http://jsm.io/jsm.js"></script>
     <style>
       head, body {
           height: 100%;
@@ -38,13 +38,19 @@
   <body>
     <script type="text/javascript">
       define('main', function(require, exports, module) {
-      var streamer = require('https!raw.github.com/Gozala/streamer/master/streamer.js')
+      var streamer = require('https!raw.github.com/Gozala/streamer/master/core')
+
+      // Stream of mousemove events.
       function mousemove(next, stop) {
          document.addEventListener("mousemove", next, false);
       }
-      var axis = streamer.map(mousemove, function(element) {
+
+      // Stream of x, y pairs.
+      var axis = streamer.map(function(element) {
           return [ element.clientX, element.clientY ]
-      })
+      }, mousemove)
+
+
       axis(function(position) {
          var x = document.getElementById('x')
          var y = document.getElementById('y')
