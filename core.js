@@ -275,7 +275,7 @@ function slice(source, start, end) {
     filter(function(element) {
       return start <= index ++
     }, source)(function onElement(element) {
-      return next(element), index >= end ? (stop(), false) : true
+      return (index <= end && next(element)), index >= end ? (stop(), false) : true
     }, stop = limit(stop))
   }
 }
