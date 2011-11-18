@@ -1,5 +1,7 @@
 # streamer #
 
+[![Build Status](https://secure.travis-ci.org/Gozala/streamer.png)](http://travis-ci.org/Gozala/streamer)
+
 In computing, the term [stream] is used in a number of ways, in all cases
 referring to a sequence of elements made available over time.
 
