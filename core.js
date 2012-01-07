@@ -611,4 +611,22 @@ function delay(source, time) {
 }
 exports.delay = delay
 
+function handle(handler, source) {
+  /**
+  Takes an error `handler` function that is called on error in the given
+  source stream. `lambda` will be called with an error value and a sub-stream
+  reading which caused an error. If error handler returns a stream it will be
+  used as tail of the given stream from that point on, otherwise error will
+  propagate.
+  **/
+  return function stream(next) {
+    source(function interfere(head, tail) {
+      if (tail) return next(head, handle(handler, tail))
+      tail = head ? handler(head, source) : tail
+      tail ? tail(next) : next(head)
+    })
+  }
+}
+exports.handle = handle
+
 });
