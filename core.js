@@ -1,5 +1,5 @@
 /* vim:set ts=2 sw=2 sts=2 expandtab */
-/*jshint asi: true undef: true es5: true node: true devel: true
+/*jshint asi: true undef: true es5: true node: true devel: true esnext: true
          forin: false latedef: false */
 /*global define: true */
 
@@ -7,29 +7,221 @@
 
 'use strict';
 
-function stream(head, tail) {
-  /**
-  Returns a stream who's first element is `head` and all the rest elements
-  are elements of `tail` stream.
-  **/
-  return function stream(next) {
-    next(head, tail)
-  }
+function signal(observer, error, value) {
+  // If error argument is passed then promise is rejected, otherwise it will
+  // be fulfilled with a given value
+  var handler = error ? observer.reject : observer.deliver
+
+  // If handler is defined then `forwardValue` is a return value of the handler,
+  // otherwise it's a given value.
+  observer.forwardValue = handler ? handler(error || value) : value
+  // If handler is defined then `forwardError` is null (since it was handled
+  // via handler), otherwise it's a given error.
+  observer.forwardError = handler ? null : error
+
+  // If promise forwarder is already defined then forward values.
+  observer.forward && observer.forward(observer.forwardError, observer.forwardValue)
 }
-exports.stream = stream
 
+function Promise(run) {
+  var observers = [], pending = true, reason, result
+  return Object.create(this && this.prototype || Promise.prototype, {
+    then: { value: function then(deliver, reject) {
+      var observer = { deliver: deliver, reject: reject, forward: null }
+      // If promise is pending then register observer.
+      if (pending) observers.push(observer)
+      // If promise is already delivered then just signal observer.
+      else signal(observer, reason, result)
 
-function iterate(lambda, value) {
+      // If promise was not run to completion yet then run it.
+      if (run) run(function(error, value) {
+        run = null
+        pending = false
+        reason = error
+        result = value
+        observers.splice(0).forEach(function(observer) {
+          signal(observer, reason, result)
+        })
+      })
+
+      // Create a new promise that will be resolved with a value returned
+      // by a deliver / reject handlers.
+      return new this.constructor(function(forward) {
+        if (pending) observer.forward = forward
+        else forward(observer.forwardError, observer.forwardValue)
+      })
+    }}
+  })
+}
+
+function Stream(head, tail) {
+  var next = typeof(tail) === 'function' ? tail :
+             !tail && typeof(head) === 'function' ? head : null
+  head = head === next ? null : head
+  tail = tail === next ? null : tail || next ? tail : Stream.empty
+
+  return Object.create(Stream.prototype, {
+    // If next is not defined then it's head is next.
+    head: { value: head, enumerable: true },
+    tail: { value: tail, enumerable: true, writable: true },
+    next: { value: next }
+  })
+}
+
+/**
+  Empty stream. Faster equivalent of `list()`.
+**/
+Stream.empty = Stream()
+
+Stream.of = function of() {
+  /**
+  Creates stream of given elements.
+  @examples
+    Stream.of('a', 2, {})       // => <'a', 2, {}>
+  **/
+  return Stream.from(arguments)
+}
+
+Stream.from = function from(value) {
+  /**
+  Creates stream from the given array / string.
+  @examples
+    Stream.from([ 1, 2, 3, 4 ])   // => <1, 2, 3, 4>
+    Stream.from('hello')          // => <'h', 'e', 'l', 'l', 'o'>
+  **/
+
+  return !value.length ? Stream.empty : Stream(value[0], function() {
+    return Stream.from(Array.prototype.slice.call(value, 1))
+  })
+}
+
+Stream.promise = Promise
+Stream.map = function map(fn) {
+  var streams = Array.prototype.slice.call(arguments, 1)
+  var stream = streams.reduce(function(stream, source) {
+    stream.zip(source)
+  }, streams.shift())
+  return stream.map(Array.flatten).map(fn)
+}
+
+Stream.prototype.next = function next() { return this.tail }
+Stream.prototype.then = function then(deliver, reject) {
+  this.tail = this.tail || this.next && this.next()
+  return this.head && this.tail ? (deliver ? deliver(this) : this) :
+  this.head ? this.tail.then(deliver, reject) :
+  (deliver ? deliver(null) : null)
+}
+Stream.prototype.take = function take(n) {
+  return this.then(function forward(stream) {
+    return !stream ? null :
+           n - 1 > 0 ? Stream(stream.head, stream.tail.take(n - 1)) :
+           Stream(stream.head, Stream.empty)
+  })
+}
+Stream.prototype.drop = function drop(n) {
+  return this.then(function forward(stream) {
+    return !stream ? null :
+           n > 0 ? stream.tail.drop(n - 1) :
+           stream.tail
+  })
+}
+Stream.prototype.filter = function filter(fn) {
+  return  this.then(function forward(stream) {
+    return !stream ? null :
+           fn(stream.head) ? Stream(stream.head, stream.tail.filter(fn)) :
+           stream.tail.filter(fn)
+  })
+}
+Stream.prototype.map = function map(fn) {
+  return this.then(function forward(stream) {
+    return !stream ? null : Stream(fn(stream.head), stream.tail.map(fn))
+  })
+}
+Stream.prototype.zip = function zip(source1, source2, source3) {
+  var sources = Array.prototype.slice.call(arguments)
+  sources.unshift(this)
+  sources.unshift(Array)
+  return Stream.map.apply(sources)
+}
+Stream.prototype.append = function append(source) {
+  return this.then(function(stream) {
+    return stream.isEmpty() ? source
+                            : Stream.new(stream.head, stream.tail.append(source))
+  })
+}
+Stream.prototype.flatten = function flatten() {
+  return this.then(function(stream) {
+    return stream.isEmpty() ? Stream.empty
+                            : stream.head.append(stream.tail.flatten())
+  })
+}
+Stream.prototype.mix = function mix(source) {
+  var self = this
+  return Stream(function rest() {
+    var first = Stream.promise()
+    var last = Stream.promise()
+    var streams = [ first, last ]
+    function deliver(stream) { Stream.deliver(streams.shift(), stream) }
+
+    self.then(deliver)
+    source.then(deliver)
+
+    return first.then(function(first) {
+      return first.isEmpty() ? last : Stream(first.head, first.tail.mix(last))
+    })
+  })
+}
+Stream.prototype.merge = function merge() {
+  return this.then(function(stream) {
+    return stream.isEmpty() ? stream
+                            : stream.head.mix(stream.tail.merge())
+  })
+}
+Stream.prototype.handle = function handle(fn) {
+  return this.then(function forward(stream) {
+    return stream.isEmpty() ? stream
+                            : Stream.new(stream.head, stream.tail.handle(fn))
+  }, function error(stream) {
+    return fn(stream) || stream
+  })
+}
+Stream.prototype.delay = function delay(ms) {
+  return this.then(function forward() {
+    return this.isEmpty() ? stream : Stream.new(function rest(next) {
+      setTimeout(next, ms || 1, Stream.new(stream.head, stream.tail.delay(ms)))
+    })
+  })
+}
+Stream.prototype.lazy = function lazy() {
+  return this.then(function forward(stream) {
+    return Stream.new(stream.head, stream.tail.lazy())
+  })
+}
+
+function print(stream, continuation) {
+  /**
+  Utility function to print streams.
+  @param {Function} stream
+     stream to print
+  @examples
+     print(list('Hello', 'world'))
+  **/
+  stream.when(function(stream) {
+    if (!stream) return console.log('>')
+    console.log((continuation ? '  :' : '<stream\n :') + stream.head)
+    setTimeout(print, 1, stream.tail, true)
+  })
+}
+exports.print = print
+
+Stream.iterate = function iterate(lambda, value) {
   /**
   Returns a stream of `value, lambda(value), lambda(lambda(value))` etc.
   `lambda` must be free of side-effects.
   **/
 
-  return function stream(next) {
-    next(value, iterate(lambda, lambda(value)))
-  }
+  return Stream(value, iterate(lambda, lambda(value)))
 }
-exports.iterate = iterate
 
 function repeat(value, n) {
   /**
@@ -43,29 +235,6 @@ function repeat(value, n) {
   }
 }
 exports.repeat = repeat
-
-function list() {
-  /**
-  Creates stream of given elements.
-  @examples
-    list('a', 2, {})(console.log)
-  **/
-
-  var elements = Array.prototype.slice.call(arguments)
-  return function stream(next) {
-    elements.length ? next(elements[0], list.apply(null, elements.slice(1)))
-                    : next()
-  }
-}
-exports.list = list
-
-function empty(next) {
-  /**
-  Empty stream. Faster equivalent of `list()`.
-  **/
-  next()
-}
-exports.empty = empty
 
 function head(source, number) {
   /**
@@ -427,6 +596,7 @@ function mix(source, source2, source3) {
 
     var first, second, promises = [ first = promise(), second = promise() ]
     function forward(head, tail) { deliver(promises.shift(), head, tail) }
+
     source(forward)
     mix.apply(null, sources)(forward)
 
@@ -470,25 +640,6 @@ function merge(sources) {
   }
 }
 exports.merge = merge
-
-function print(stream) {
-  /**
-  Utility function to print streams.
-  @param {Function} stream
-     stream to print
-  @examples
-     print(list('Hello', 'world'))
-  **/
-
-  console.log('<stream>')
-  on(stream)(function next(element) {
-    console.log(element)
-  }, function stop(error) {
-    error ? console.error('!!!', error, '!!!') : console.log('</stream>')
-  })
-}
-exports.print = print
-
 
 function hub(source) {
   /**
