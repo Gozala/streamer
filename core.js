@@ -60,8 +60,15 @@ exports.Stream = Stream
 function Stream(head, tail) {
   var stream = Object.create(Stream.prototype)
   stream.head = head
-  stream.tail = typeof(tail.then) === 'function' ? tail : Stream.tail(tail, stream)
+  stream.tail = typeof(tail.then) === 'function' ? tail
+                                                 : Stream.lazy(tail, stream)
   return stream
+}
+
+Stream.lazy = function lazy(next, stream) {
+  return Stream.promise(function(deliver, reject) {
+    next.call(stream || this, stream || this).then(deliver, reject)
+  })
 }
 
 Stream.promise = function Promise(next) {
@@ -121,12 +128,6 @@ Stream.print = function() {
   }
 }()
 exports.print = Stream.print
-
-Stream.tail = function tail(next, stream) {
-  return Stream.promise(function(deliver, reject) {
-    next.call(stream).then(deliver, reject)
-  })
-}
 
 Stream.repeat = function repeat(value) {
   /**
