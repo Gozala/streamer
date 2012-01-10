@@ -105,30 +105,6 @@ Stream.promise = function Promise(next) {
   })
 }
 
-Stream.print = function() {
-  var write = typeof(process) === 'undefined' ? console.log.bind(console) : function() {
-    process.stdout.write(Array.prototype.slice.call(arguments).join(' '))
-  }
-  return function print(stream, continuation) {
-    /**
-    Utility function to print streams.
-    @param {Function} stream
-       stream to print
-    @examples
-       print(list('Hello', 'world'))
-    **/
-    stream.then(function(stream) {
-      setTimeout(function(stream) {
-        if (!stream) return write(':>')
-        if (!continuation) write('<')
-        write(':' + stream.head)
-        print(stream.tail, true)
-      }, 1, stream)
-    })
-  }
-}()
-exports.print = Stream.print
-
 Stream.repeat = function repeat(value) {
   /**
   Returns a stream of `value`s.
@@ -221,6 +197,31 @@ Stream.prototype.alter = function alter(transform, handle) {
     }, handle || reject)
   })
 }
+
+Stream.prototype.print = function(fallback) {
+  fallback = typeof(process) === 'undefined' ? console.log.bind(console) : function() {
+    process.stdout.write(Array.prototype.slice.call(arguments).join(' '))
+  }
+
+  return function print(write, continuation) {
+    /**
+    Utility function to print streams.
+    @param {Function} stream
+       stream to print
+    @examples
+       print(list('Hello', 'world'))
+    **/
+    write = write || fallback
+    this.then(function() {
+      setTimeout(function(stream) {
+        if (!continuation) write('<stream')
+        if (!stream) return write(' />')
+        write('', stream.head)
+        stream.tail.print(write, true)
+      }, 1, this)
+    })
+  }
+}()
 
 Stream.prototype.map = function map(fn) {
   /**
