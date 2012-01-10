@@ -68,15 +68,23 @@ Stream.promise = function Promise(next) {
   return Object.create(this && this.prototype || Promise.prototype, {
     then: { value: function then(deliver, reject) {
       var value, error, forward, propagate, pending = true
-      next.call(this, function(chunck) {
+
+      function fulfill(chunck) {
+        // If promise is fulfilled with promise then wait until it's
+        // fulfilled as well.
+        if (chunck && !chunck.tail) return chunck.then(fulfill, fail)
         pending = false
         value = deliver ? deliver.call(chunck, chunck) : chunck
         if (forward) forward(value)
-      }, function(reason) {
+      }
+
+      function fail() {
         pending = false
         if (reject) value = reject(value)
         else error = reason
-      })
+      }
+
+      next.call(this, fulfill, fail)
 
       return Promise.call(this, function(deliver, reject) {
         if (pending) {
@@ -126,6 +134,7 @@ Stream.repeat = function repeat(value) {
   **/
   return Stream(value, function rest() { return this })
 }
+
 Stream.iterate = function iterate(fn, value) {
   /**
   Returns a stream of `value, fn(value), fn(fn(value))` etc.
@@ -236,6 +245,7 @@ Stream.prototype.map = function map(fn) {
     return this && Stream(fn(this.head), this.tail.map(fn))
   })
 }
+
 Stream.prototype.take = function take(n) {
   /**
   Returns stream containing first `n` elements of given `source` stream.
