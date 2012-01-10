@@ -496,8 +496,11 @@ Stream.prototype.lazy = function lazy() {
   @returns {Function}
      lazy equivalent of the given source.
   **/
-  return this.alter(function() {
-    return Stream(this.head, this.tail.lazy())
+  var source = this, value = this
+  return Stream.promise(function forward(deliver, reject) {
+    value !== source ? deliver(value) : source.then(function() {
+      deliver((value = this ? Stream(this.head, this.tail.lazy()) : null))
+    }, reject)
   })
 }
 
