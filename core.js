@@ -7,6 +7,7 @@
 
 'use strict';
 
+/*
 function signal(observer, error, value) {
   // If error argument is passed then promise is rejected, otherwise it will
   // be fulfilled with a given value
@@ -53,20 +54,67 @@ function Promise(run) {
     }}
   })
 }
+*/ 
 
+exports.Stream = Stream
 function Stream(head, tail) {
-  var next = typeof(tail) === 'function' ? tail :
-             !tail && typeof(head) === 'function' ? head : null
-  head = head === next ? null : head
-  tail = tail === next ? null : tail || next ? tail : Stream.empty
-
   return Object.create(Stream.prototype, {
-    // If next is not defined then it's head is next.
     head: { value: head, enumerable: true },
-    tail: { value: tail, enumerable: true, writable: true },
-    next: { value: next }
+    tail: { value: tail, enumerable: true }
   })
 }
+
+Stream.promise = function Promise(next) {
+  return Object.create(this && this.prototype || Promise.prototype, {
+    then: { value: function then(deliver) {
+      var value, forward, pending = true
+      next.call(this, function(chunck) {
+        pending = false
+        value = deliver ? deliver.call(chunck, chunck) : chunck
+        if (forward) forward(value)
+      })
+
+      return Promise.call(this, function(deliver) {
+        if (pending) forward = deliver
+        else if (deliver) deliver(value)
+      })
+    }, enumerable: true }
+  })
+}
+
+Stream.prototype.alter = function alter(transform, handle) {
+  /**
+  Returns a stream that wraps `this` one and lazily `transform` it every time
+  `then` is called. Function transform is called on each `then` and passes
+  accumulated `head` and `tail` via `this` pseudo variable. Stream returned
+  by the `transform` will fulfill values of the returned stream by this
+  function. In other words result of this function is an equivalent of the
+  stream returned by the `transform` function (Difference is that `alter`
+  returns stream immediately while transform is called on demand).
+  **/
+  var self = this
+  return Object.create(Stream.prototype, {
+    then: { value: function then(deliver) {
+      return self.then(function(value) {
+        var result = transform ? transform.call(value, value) : value
+        return deliver ? deliver(result) : result
+      })
+    }}
+  })
+}
+
+Stream.prototype.map = function map(fn) {
+  return this.alter(function() {
+    return Stream(fn(this.head), this.tail.map(fn))
+  })
+}
+
+var ones = Stream.promise(function(deliver) {
+  deliver(Stream(1, this))
+})
+var twos = ones.map(function(n) {
+  return n + 1
+})
 
 /**
   Empty stream. Faster equivalent of `list()`.
@@ -106,10 +154,13 @@ Stream.map = function map(fn) {
 
 Stream.prototype.next = function next() { return this.tail }
 Stream.prototype.then = function then(deliver, reject) {
-  this.tail = this.tail || this.next && this.next()
-  return this.head && this.tail ? (deliver ? deliver(this) : this) :
-  this.head ? this.tail.then(deliver, reject) :
-  (deliver ? deliver(null) : null)
+  return Object.create(this, {
+    then: { value: function then(forward, handle) {
+      return Object.getPrototypeOf(this).then(function(value) {
+        return forward(deliver(value))
+      }, handle)
+    }}
+  })
 }
 Stream.prototype.take = function take(n) {
   return this.then(function forward(stream) {
@@ -206,7 +257,7 @@ function print(stream, continuation) {
   @examples
      print(list('Hello', 'world'))
   **/
-  stream.when(function(stream) {
+  stream.then(function(stream) {
     if (!stream) return console.log('>')
     console.log((continuation ? '  :' : '<stream\n :') + stream.head)
     setTimeout(print, 1, stream.tail, true)
