@@ -511,7 +511,7 @@ Stream.prototype.on = function on(next, stop) {
   is returned.
   **/
   this.then(function() {
-    if (!this) stop()
+    if (!this) stop && stop()
     else if (false !== next(this.head)) this.tail.on(next, stop)
   }, stop)
 }
