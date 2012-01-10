@@ -58,68 +58,87 @@ function Promise(run) {
 
 exports.Stream = Stream
 function Stream(head, tail) {
-  return Object.create(Stream.prototype, {
-    head: { value: head, enumerable: true },
-    tail: { value: tail, enumerable: true }
-  })
+  var stream = Object.create(Stream.prototype)
+  stream.head = head
+  stream.tail = typeof(tail.then) === 'function' ? tail : Stream.tail(tail, stream)
+  return stream
 }
 
 Stream.promise = function Promise(next) {
   return Object.create(this && this.prototype || Promise.prototype, {
-    then: { value: function then(deliver) {
-      var value, forward, pending = true
+    then: { value: function then(deliver, reject) {
+      var value, error, forward, propagate, pending = true
       next.call(this, function(chunck) {
         pending = false
         value = deliver ? deliver.call(chunck, chunck) : chunck
         if (forward) forward(value)
+      }, function(reason) {
+        pending = false
+        if (reject) value = reject(value)
+        else error = reason
       })
 
-      return Promise.call(this, function(deliver) {
-        if (pending) forward = deliver
-        else if (deliver) deliver(value)
+      return Promise.call(this, function(deliver, reject) {
+        if (pending) {
+          forward = deliver
+          propagate = reject
+        }
+        else if (deliver && value) deliver(value)
+        else if (reject && error) reject(error)
       })
     }, enumerable: true }
   })
 }
 
-Stream.prototype.alter = function alter(transform, handle) {
+Stream.print = function() {
+  var write = typeof(process) === 'undefined' ? console.log.bind(console) : function() {
+    process.stdout.write(Array.prototype.slice.call(arguments).join(' '))
+  }
+  return function print(stream, continuation) {
+    /**
+    Utility function to print streams.
+    @param {Function} stream
+       stream to print
+    @examples
+       print(list('Hello', 'world'))
+    **/
+    stream.then(function(stream) {
+      setTimeout(function(stream) {
+        if (!stream) return write(':>')
+        if (!continuation) write('<')
+        write(':' + stream.head)
+        print(stream.tail, true)
+      }, 1, stream)
+    })
+  }
+}()
+exports.print = Stream.print
+
+Stream.tail = function tail(next, stream) {
+  return Stream.promise(function(deliver, reject) {
+    next.call(stream).then(deliver, reject)
+  })
+}
+
+Stream.repeat = function repeat(value) {
   /**
-  Returns a stream that wraps `this` one and lazily `transform` it every time
-  `then` is called. Function transform is called on each `then` and passes
-  accumulated `head` and `tail` via `this` pseudo variable. Stream returned
-  by the `transform` will fulfill values of the returned stream by this
-  function. In other words result of this function is an equivalent of the
-  stream returned by the `transform` function (Difference is that `alter`
-  returns stream immediately while transform is called on demand).
+  Returns a stream of `value`s.
   **/
-  var self = this
-  return Object.create(Stream.prototype, {
-    then: { value: function then(deliver) {
-      return self.then(function(value) {
-        var result = transform ? transform.call(value, value) : value
-        return deliver ? deliver(result) : result
-      })
-    }}
+  return Stream(value, function rest() { return this })
+}
+Stream.iterate = function iterate(fn, value) {
+  /**
+  Returns a stream of `value, fn(value), fn(fn(value))` etc.
+  `fn` must be free of side-effects.
+  **/
+  return Stream(value, function rest() {
+    return Stream.iterate(fn, fn(this.head))
   })
 }
-
-Stream.prototype.map = function map(fn) {
-  return this.alter(function() {
-    return Stream(fn(this.head), this.tail.map(fn))
-  })
-}
-
-var ones = Stream.promise(function(deliver) {
-  deliver(Stream(1, this))
-})
-var twos = ones.map(function(n) {
-  return n + 1
-})
-
 /**
   Empty stream. Faster equivalent of `list()`.
 **/
-Stream.empty = Stream()
+Stream.empty = Stream.promise(function(deliver) { deliver(null) })
 
 Stream.of = function of() {
   /**
@@ -137,14 +156,30 @@ Stream.from = function from(value) {
     Stream.from([ 1, 2, 3, 4 ])   // => <1, 2, 3, 4>
     Stream.from('hello')          // => <'h', 'e', 'l', 'l', 'o'>
   **/
-
-  return !value.length ? Stream.empty : Stream(value[0], function() {
+  return !value.length ? Stream.empty : Stream(value[0], function rest() {
     return Stream.from(Array.prototype.slice.call(value, 1))
   })
 }
 
-Stream.promise = Promise
 Stream.map = function map(fn) {
+  /**
+  Returns a stream consisting of the result of applying `lambda` to the
+  set of first elements of each stream, followed by applying `lambda` to the
+  set of second elements in each stream, until any one of the streams is
+  exhausted. Any remaining elements in other streams are ignored. Function
+  `lambda` should accept number of stream arguments.
+  @examples
+    var s1 = list(1, 2, 3)
+    var s2 = list(3, 4, 5, 6)
+    var sums = map(function(a, b) { a + b }, s1, s2)
+    sums(console.log)
+     // 4
+     // 6
+     // 8
+     // 2
+     // 4
+     // 6
+  **/
   var streams = Array.prototype.slice.call(arguments, 1)
   var stream = streams.reduce(function(stream, source) {
     stream.zip(source)
@@ -152,252 +187,34 @@ Stream.map = function map(fn) {
   return stream.map(Array.flatten).map(fn)
 }
 
-Stream.prototype.next = function next() { return this.tail }
-Stream.prototype.then = function then(deliver, reject) {
+Stream.prototype.then = function then(deliver) {
+  var value = deliver ? deliver.call(this, this) : this
+  return Stream.promise(function(deliver) {
+    deliver.call(value, value)
+  })
+}
+
+Stream.prototype.alter = function alter(transform, handle) {
+  /**
+  Returns a stream that wraps `this` one and lazily `transform` it every time
+  `then` is called. Function transform is called on each `then` and passes
+  accumulated `head` and `tail` via `this` pseudo variable. Stream returned
+  by the `transform` will fulfill values of the returned stream by this
+  function. In other words result of this function is an equivalent of the
+  stream returned by the `transform` function (Difference is that `alter`
+  returns stream immediately while transform is called on demand).
+  **/
   return Object.create(this, {
-    then: { value: function then(forward, handle) {
+    then: { value: function then(deliver, reject) {
       return Object.getPrototypeOf(this).then(function(value) {
-        return forward(deliver(value))
-      }, handle)
+        var result = transform ? transform.call(value, value) : value
+        return deliver ? deliver(result) : result
+      }, handle || reject)
     }}
   })
 }
-Stream.prototype.take = function take(n) {
-  return this.then(function forward(stream) {
-    return !stream ? null :
-           n - 1 > 0 ? Stream(stream.head, stream.tail.take(n - 1)) :
-           Stream(stream.head, Stream.empty)
-  })
-}
-Stream.prototype.drop = function drop(n) {
-  return this.then(function forward(stream) {
-    return !stream ? null :
-           n > 0 ? stream.tail.drop(n - 1) :
-           stream.tail
-  })
-}
-Stream.prototype.filter = function filter(fn) {
-  return  this.then(function forward(stream) {
-    return !stream ? null :
-           fn(stream.head) ? Stream(stream.head, stream.tail.filter(fn)) :
-           stream.tail.filter(fn)
-  })
-}
+
 Stream.prototype.map = function map(fn) {
-  return this.then(function forward(stream) {
-    return !stream ? null : Stream(fn(stream.head), stream.tail.map(fn))
-  })
-}
-Stream.prototype.zip = function zip(source1, source2, source3) {
-  var sources = Array.prototype.slice.call(arguments)
-  sources.unshift(this)
-  sources.unshift(Array)
-  return Stream.map.apply(sources)
-}
-Stream.prototype.append = function append(source) {
-  return this.then(function(stream) {
-    return stream.isEmpty() ? source
-                            : Stream.new(stream.head, stream.tail.append(source))
-  })
-}
-Stream.prototype.flatten = function flatten() {
-  return this.then(function(stream) {
-    return stream.isEmpty() ? Stream.empty
-                            : stream.head.append(stream.tail.flatten())
-  })
-}
-Stream.prototype.mix = function mix(source) {
-  var self = this
-  return Stream(function rest() {
-    var first = Stream.promise()
-    var last = Stream.promise()
-    var streams = [ first, last ]
-    function deliver(stream) { Stream.deliver(streams.shift(), stream) }
-
-    self.then(deliver)
-    source.then(deliver)
-
-    return first.then(function(first) {
-      return first.isEmpty() ? last : Stream(first.head, first.tail.mix(last))
-    })
-  })
-}
-Stream.prototype.merge = function merge() {
-  return this.then(function(stream) {
-    return stream.isEmpty() ? stream
-                            : stream.head.mix(stream.tail.merge())
-  })
-}
-Stream.prototype.handle = function handle(fn) {
-  return this.then(function forward(stream) {
-    return stream.isEmpty() ? stream
-                            : Stream.new(stream.head, stream.tail.handle(fn))
-  }, function error(stream) {
-    return fn(stream) || stream
-  })
-}
-Stream.prototype.delay = function delay(ms) {
-  return this.then(function forward() {
-    return this.isEmpty() ? stream : Stream.new(function rest(next) {
-      setTimeout(next, ms || 1, Stream.new(stream.head, stream.tail.delay(ms)))
-    })
-  })
-}
-Stream.prototype.lazy = function lazy() {
-  return this.then(function forward(stream) {
-    return Stream.new(stream.head, stream.tail.lazy())
-  })
-}
-
-function print(stream, continuation) {
-  /**
-  Utility function to print streams.
-  @param {Function} stream
-     stream to print
-  @examples
-     print(list('Hello', 'world'))
-  **/
-  stream.then(function(stream) {
-    if (!stream) return console.log('>')
-    console.log((continuation ? '  :' : '<stream\n :') + stream.head)
-    setTimeout(print, 1, stream.tail, true)
-  })
-}
-exports.print = print
-
-Stream.iterate = function iterate(lambda, value) {
-  /**
-  Returns a stream of `value, lambda(value), lambda(lambda(value))` etc.
-  `lambda` must be free of side-effects.
-  **/
-
-  return Stream(value, iterate(lambda, lambda(value)))
-}
-
-function repeat(value, n) {
-  /**
-  Returns a stream of `n` `value`s. If `n` is not provided returns infinite
-  stream of `value`s.
-  **/
-
-  n = n || Infinity
-  return function stream(next) {
-    n ? next(value, repeat(value, n - 1)) : next()
-  }
-}
-exports.repeat = repeat
-
-function head(source, number) {
-  /**
-  Returns a stream containing only first `number` of elements of the given
-  `source` stream or all elements, if `source` stream has less than `number`
-  of elements. If `number` is not passed it defaults to `1`.
-  @param {Function} source
-     source stream
-  @param {Number} number=1
-     number of elements to take from stream
-  **/
-
-  return function stream(next) {
-    source(function interfere(head, tail) {
-      next(head, tail ? empty : tail)
-    })
-  }
-}
-exports.head = exports.first = exports.peek = head
-
-function tail(source, number) {
-  /**
-  Returns a stream equivalent to given `source` stream, except that the first
-  `number` of elements are omitted. If `source` stream has less than `number`
-  of elements, then empty stream is returned. `number` defaults to `1` if it's
-  not passed.
-  @param {Function} source
-     source stream to return tail of.
-  @param {Number} number=1
-     Number of elements that will be omitted.
-  **/
-
-  return function stream(next) {
-    source(function interfere(head, tail) {
-      tail ? tail(next) : next(head)
-    })
-  }
-}
-exports.tail = exports.rest = tail
-
-function take(n, source) {
-  /**
-  Returns stream containing first `n` elements of given `source` stream.
-
-  @param {Number} n
-    Number of elements to take.
-  @param {Function} source
-    source stream to take elements from.
-  @examples
-     var numbers = list(10, 23, 2, 7, 17)
-     take(2, numbers)(console.log)
-     // 10
-     // 23
-  **/
-  return function stream(next) {
-    !n ? next() : source(function(head, tail) {
-      next(head, tail ? take(n - 1, tail) : tail)
-    })
-  }
-}
-exports.take = take
-
-function drop(n, source) {
-  /**
-  Returns stream of all, but the first `n` elements of the given `source`
-  stream.
-  @param {Number} n
-    Number of elements to take.
-  @param {Function} source
-    source stream to take elements from.
-  @examples
-     var numbers = list(10, 23, 2, 7, 17)
-     drop(3, numbers)(console.log)
-     // 10
-     // 23
-  **/
-  return function stream(next) {
-    source(function(head, tail) {
-      (tail && n) ? drop(n - 1, tail)(next) : next(head, tail)
-    })
-  }
-}
-exports.drop = drop
-
-function filter(lambda, source) {
-  /**
-  Returns stream of filtered values.
-  @param {Function} lambda
-    function that filters values
-  @param {Function} source
-    source stream to be filtered
-  @examples
-    var numbers = list(10, 23, 2, 7, 17)
-    var digits = filter(function(value) {
-      return value >= 0 && value <= 9
-    }, numbers)
-    digits(console.log)
-    // 2
-    // 7
-  **/
-
-  return function stream(next) {
-    source(function interfere(head, tail) {
-      !tail ? next(head, tail) :
-      lambda(head) ? next(head, filter(lambda, tail)) :
-      filter(lambda, tail)(next)
-    })
-  }
-}
-exports.filter = filter
-
-function mapone(lambda, source) {
   /**
   Returns stream of mapped values.
   @param {Function} lambda
@@ -417,14 +234,277 @@ function mapone(lambda, source) {
      // 4
      // 6
   **/
-
-  return function stream(next) {
-    source(function interfere(head, tail) {
-      tail ? next(lambda(head), mapone(lambda, tail)) : next(head, tail)
-    })
-  }
+  return this.alter(function() {
+    return this && Stream(fn(this.head), this.tail.map(fn))
+  })
 }
-exports.mapone = mapone
+Stream.prototype.take = function take(n) {
+  /**
+  Returns stream containing first `n` elements of given `source` stream.
+
+  @param {Number} n
+    Number of elements to take.
+  @param {Function} source
+    source stream to take elements from.
+  @examples
+     var numbers = list(10, 23, 2, 7, 17)
+     take(2, numbers)(console.log)
+     // 10
+     // 23
+  **/
+  return this.alter(function() {
+    return n - 1 > 0 ? this && Stream(this.head, this.tail.take(n - 1))
+                     : this && Stream(this.head, Stream.empty)
+  })
+}
+
+Stream.prototype.drop = function drop(n) {
+  /**
+  Returns stream of all, but the first `n` elements of the given `source`
+  stream.
+  @param {Number} n
+    Number of elements to take.
+  @param {Function} source
+    source stream to take elements from.
+  @examples
+     var numbers = list(10, 23, 2, 7, 17)
+     drop(3, numbers)(console.log)
+     // 10
+     // 23
+  **/
+  return this.alter(function() {
+    return this && n > 0 ? this.tail.drop(n - 1) : this
+  })
+}
+
+Stream.prototype.filter = function filter(fn) {
+  /**
+  Returns stream of filtered values.
+  @param {Function} lambda
+    function that filters values
+  @param {Function} source
+    source stream to be filtered
+  @examples
+    var numbers = list(10, 23, 2, 7, 17)
+    var digits = filter(function(value) {
+      return value >= 0 && value <= 9
+    }, numbers)
+    digits(console.log)
+    // 2
+    // 7
+  **/
+  return  this.alter(function() {
+    return !this ? this :
+           fn(this.head) ? Stream(this.head, this.tail.filter(fn)) :
+           this.tail.filter(fn)
+  })
+}
+
+Stream.prototype.zip = function zip(source1, source2, source3) {
+  /**
+  This function returns stream of tuples, where the n-th tuple contains the
+  n-th element from each of the argument streams. The returned stream is
+  truncated in length to the length of the shortest argument stream.
+  @params {Function}
+     source steams to be combined
+  @examples
+     var a = list([ 'a', 'b', 'c' ])
+     var b = list([ 1, 2, 3, 4 ])
+     var c = list([ '!', '@', '#', '$', '%' ])
+     var abc = zip(a, b, c)
+     abs(console.log)
+     // [ 'a', 1, '!' ]
+     // [ 'b', 2, '@' ]
+     // [ 'c', 3, '#' ]
+  **/
+  var sources = Array.prototype.slice.call(arguments)
+  sources.unshift(this)
+  sources.unshift(Array)
+  return Stream.map.apply(sources)
+}
+
+Stream.prototype.append = function append(source) {
+  /**
+  Returns a stream that contains all elements of each stream in the order they
+  appear in the original streams. If any of the `source` streams is stopped
+  with an error than it propagates to the resulting stream and it also get's
+  stopped.
+  @examples
+     var stream = append(list(1, 2), list('a', 'b'))
+     stream(console.log)
+     // 1
+     // 2
+     // 'a'
+     // 'b'
+  **/
+  return this.alter(function() {
+    return this ? Stream(this.head, this.tail.append(source)) : source
+  })
+}
+
+Stream.prototype.flatten = function flatten() {
+  /**
+  Takes `source` stream of streams and returns stream that contains all
+  elements of each element stream in the order they appear there. Any error
+  from any stream will propagate up to the resulting stream consumer.
+  @param {Function} source
+     Stream of streams.
+  @examples
+     function async(next, stop) {
+       setTimeout(function() {
+         next('async')
+         stop()
+       }, 10)
+     }
+     var stream = flatten(list(async, list(1, 2, 3)))
+     stream(console.log)
+     // 'async'
+     // 1
+     // 2
+     // 3
+  **/
+  return this.alter(function(stream) {
+    return this && this.head.append(this.tail.flatten())
+  })
+}
+
+Stream.prototype.mix = function mix(source) {
+  /**
+  Returns a stream that contains all elements of each stream in the order those
+  elements are delivered. This is somewhat parallel version of `append`, since
+  it starts reading from all sources simultaneously and yields head that comes
+  first. If sources are synchronous, first come firs serve makes no real sense,
+  in such case, resulting stream contains first elements of each source stream,
+  followed by second elements of each source stream, etc.. Any error from any
+  source stream will propagate up to the resulting stream consumer.
+  @examples
+     var stream = append(list(1, 2), list('a', 'b'))
+     stream(console.log)
+     // 1
+     // 'a'
+     // 2
+     // 'b'
+  **/
+  var self = this
+  return Stream.promise(function(deliver, reject) {
+    var values = [], observers = []
+
+    function forward(deliver, reject) {
+      if (values.length) deliver(values.shift())
+      else observer.push(deliver)
+    }
+
+    function fulfill() {
+      if (observers.length) observers.shift()(this)
+      else values.push(this)
+    }
+
+    var first = Stream.promise(forward)
+    var second = Stream.promise(forward)
+    var mixed = first.then(function() {
+      return this ? Stream(this.head, this.tail.mix(second)) : this.second
+    })
+
+    mixed.then(deliver, reject)
+
+    self.then(fulfill)
+    source.then(fulfill)
+  })
+}
+
+Stream.prototype.merge = function merge() {
+  /**
+  Takes `source` stream of streams and returns stream that contains all
+  elements of each element stream in the order they are delivered. This is
+  somewhat parallel version of `flatten`, since it starts reading from all
+  element streams simultaneously and yields head that comes first. If sources
+  are synchronous, first come firs serve makes no real sense, in such case,
+  this is exact equivalent of flatten. Any error from any source stream will
+  propagate up to the resulting stream consumer.
+  @param {Function} source
+     Stream of streams.
+  @examples
+     function async(next, stop) {
+       setTimeout(function() {
+         next('async')
+         stop()
+       }, 10)
+     }
+     var stream = merge(list(async, list(1, 2, 3)))
+     stream(console.log)
+     // 1
+     // 2
+     // 3
+     // 'async'
+  **/
+  return this.alter(function() {
+    return this && this.head.mix(this.tail.merge())
+  })
+}
+var ones = Stream.promise(function(deliver) {
+  deliver(Stream(1, this))
+})
+var twos = ones.map(function(n) {
+  return n + 1
+})
+
+Stream.prototype.handle = function handle(fn) {
+  /**
+  Takes an error `handler` function that is called on error in the given
+  source stream. `lambda` will be called with an error value and a sub-stream
+  reading which caused an error. If error handler returns a stream it will be
+  used as tail of the given stream from that point on, otherwise error will
+  propagate.
+  **/
+  return this.alter(null, fn)
+}
+
+Stream.prototype.delay = function delay(ms) {
+  /**
+  Takes a `source` stream and return stream of it's elements, such that each
+  element yield is delayed with a given `time` (defaults to 1) in milliseconds.
+  **/
+  return this.alter(function forward() {
+    return this && Stream.promise(function(deliver) {
+      setTimeout(deliver, ms || 1, Stream(this.head, this.tail.delay(ms)))
+    })
+  })
+}
+
+Stream.prototype.lazy = function lazy() {
+  /**
+  Returns a stream equivalent to a given `source`, with a difference that it
+  returned stream will cache it's head on first call and will wrap it's tail
+  into lazy as well. While this boost subsequent reads it can have side effect
+  of high memory usage. So it should be used with care for expensive
+  computations (that require network access for example). Wrapping infinite 
+  streams with this may not be the best idea, but possible since stream is lazy
+  it will only cache part that was read.
+  @param {Function} source
+     source stream to cache.
+  @returns {Function}
+     lazy equivalent of the given source.
+  **/
+  return this.alter(function() {
+    return Stream(this.head, this.tail.lazy())
+  })
+}
+
+Stream.prototype.on = function on(next, stop) {
+  /**
+  Function takes a stream and returns function that can register `next` and
+  `stop` listeners. `next` listener is called with each element of the given
+  stream or until it returns `false`. `stop` listener is called once `source`
+  stream is exhausted without arguments or with an error arguments error
+  occurs. `stop` listener is optional, it won't be called if `next` will return
+  `false`. Function will basically read stream until it's exhausted or `false`
+  is returned.
+  **/
+  this.then(function() {
+    if (!this) stop()
+    else if (false !== next(this.head)) this.tail.on(next, stop)
+  }, stop)
+}
 
 function zipmap(lambda) {
   /**
@@ -469,228 +549,6 @@ function zipmap(lambda) {
   }
 }
 exports.zipmap = zipmap
-
-function map(lambda, source) {
-  /**
-  Returns a stream consisting of the result of applying `lambda` to the
-  set of first elements of each stream, followed by applying `lambda` to the
-  set of second elements in each stream, until any one of the streams is
-  exhausted. Any remaining elements in other streams are ignored. Function
-  `lambda` should accept number of stream arguments.
-  @examples
-    var s1 = list(1, 2, 3)
-    var s2 = list(3, 4, 5, 6)
-    var sums = map(function(a, b) { a + b }, s1, s2)
-    sums(console.log)
-     // 4
-     // 6
-     // 8
-     // 2
-     // 4
-     // 6
-  **/
-  return arguments.length === 2 ? mapone(lambda, source)
-                                : zipmap.apply(null, arguments)
-}
-exports.map = map
-
-function zip() {
-  /**
-  This function returns stream of tuples, where the n-th tuple contains the
-  n-th element from each of the argument streams. The returned stream is
-  truncated in length to the length of the shortest argument stream.
-  @params {Function}
-     source steams to be combined
-  @examples
-     var a = list([ 'a', 'b', 'c' ])
-     var b = list([ 1, 2, 3, 4 ])
-     var c = list([ '!', '@', '#', '$', '%' ])
-     var abc = zip(a, b, c)
-     abs(console.log)
-     // [ 'a', 1, '!' ]
-     // [ 'b', 2, '@' ]
-     // [ 'c', 3, '#' ]
-  **/
-  var args = Array.prototype.slice.call(arguments)
-  args.unshift(Array)
-  return zipmap.apply(null, args)
-}
-exports.zip = zip
-
-function on(source) {
-  /**
-  Function takes a stream and returns function that can register `next` and
-  `stop` listeners. `next` listener is called with each element of the given
-  stream or until it returns `false`. `stop` listener is called once `source`
-  stream is exhausted without arguments or with an error arguments error
-  occurs. `stop` listener is optional, it won't be called if `next` will return
-  `false`. Function will basically read stream until it's exhausted or `false`
-  is returned.
-  **/
-  return function(next, stop) {
-    source(function forward(head, tail) {
-      tail ? false !== next(head) && tail(forward) : stop && stop(head)
-    })
-  }
-}
-exports.on = on
-
-
-function append(source1, source2, source3) {
-  /**
-  Returns a stream that contains all elements of each stream in the order they
-  appear in the original streams. If any of the `source` streams is stopped
-  with an error than it propagates to the resulting stream and it also get's
-  stopped.
-  @examples
-     var stream = append(list(1, 2), list('a', 'b'))
-     stream(console.log)
-     // 1
-     // 2
-     // 'a'
-     // 'b'
-  **/
-  var sources = Array.prototype.slice.call(arguments)
-  return function stream(next) {
-    !sources.length ? next() : sources[0](function forward(head, tail) {
-      tail ? next(head, append.apply(null, [tail].concat(sources.slice(1)))) :
-      head ? next(head, tail) : append.apply(null, sources.slice(1))(next)
-    })
-  }
-}
-exports.append = append
-
-function flatten(sources) {
-  /**
-  Takes `source` stream of streams and returns stream that contains all
-  elements of each element stream in the order they appear there. Any error
-  from any stream will propagate up to the resulting stream consumer.
-  @param {Function} source
-     Stream of streams.
-  @examples
-     function async(next, stop) {
-       setTimeout(function() {
-         next('async')
-         stop()
-       }, 10)
-     }
-     var stream = flatten(list(async, list(1, 2, 3)))
-     stream(console.log)
-     // 'async'
-     // 1
-     // 2
-     // 3
-  **/
-  return function stream(next) {
-    sources(function forward(source, sources) {
-      !sources ? next(source, sources) : source(function interfere(head, tail) {
-        tail ? next(head, flatten(exports.stream(tail, sources))) :
-        head ? next(head, tail) : flatten(sources)(next)
-      })
-    })
-  }
-}
-exports.flatten = flatten
-
-function promise() {
-  /**
-  Creates stream promise, that will yield it's head, tail once promise as soon
-  as promise is delivered, by calling `deliver` on promise with a desired
-  `head` and `tail`.
-  **/
-  var observers = [], head, tail, delivered
-  return Object.defineProperties(function stream(next) {
-    delivered ? next(head, tail) : observers.push(next)
-  }, {
-    _deliver: { value: function deliver(first, rest) {
-      if (delivered) return
-      delivered = true
-      head = first
-      tail = rest
-      while (observers.length) observers.shift()(head, tail)
-    }
-  }})
-}
-exports.promise = promise
-
-function deliver(promise, head, tail) {
-  /**
-  Deliver given `head` & `tail` to the given `promise`.
-  **/
-  promise._deliver(head, tail)
-}
-exports.deliver = deliver
-
-function mix(source, source2, source3) {
-  /**
-  Returns a stream that contains all elements of each stream in the order those
-  elements are delivered. This is somewhat parallel version of `append`, since
-  it starts reading from all sources simultaneously and yields head that comes
-  first. If sources are synchronous, first come firs serve makes no real sense,
-  in such case, resulting stream contains first elements of each source stream,
-  followed by second elements of each source stream, etc.. Any error from any
-  source stream will propagate up to the resulting stream consumer.
-  @examples
-     var stream = append(list(1, 2), list('a', 'b'))
-     stream(console.log)
-     // 1
-     // 'a'
-     // 2
-     // 'b'
-  **/
-  var sources = Array.prototype.slice.call(arguments, 1)
-  return function stream(next) {
-    // Nothing to mix
-    if (!source) return next()
-    // Mix of one stream is a stream itself.
-    if (!sources.length) return source(next)
-
-    var first, second, promises = [ first = promise(), second = promise() ]
-    function forward(head, tail) { deliver(promises.shift(), head, tail) }
-
-    source(forward)
-    mix.apply(null, sources)(forward)
-
-    first(function forward(head, tail) {
-      tail ? next(head, mix(second, tail)) :
-      head ? next(head) : second(next)
-    })
-  }
-}
-exports.mix = mix
-
-function merge(sources) {
-  /**
-  Takes `source` stream of streams and returns stream that contains all
-  elements of each element stream in the order they are delivered. This is
-  somewhat parallel version of `flatten`, since it starts reading from all
-  element streams simultaneously and yields head that comes first. If sources
-  are synchronous, first come firs serve makes no real sense, in such case,
-  this is exact equivalent of flatten. Any error from any source stream will
-  propagate up to the resulting stream consumer.
-  @param {Function} source
-     Stream of streams.
-  @examples
-     function async(next, stop) {
-       setTimeout(function() {
-         next('async')
-         stop()
-       }, 10)
-     }
-     var stream = merge(list(async, list(1, 2, 3)))
-     stream(console.log)
-     // 1
-     // 2
-     // 3
-     // 'async'
-  **/
-  return function stream(next) {
-    sources(function forward(source, sources) {
-      !sources ? next(source, sources) : mix(source, merge(sources))(next)
-    })
-  }
-}
-exports.merge = merge
 
 function hub(source) {
   /**
@@ -770,65 +628,5 @@ function hub(source) {
   }
 }
 exports.hub = hub
-
-function lazy(source) {
-  /**
-  Returns a stream equivalent to a given `source`, with a difference that it
-  returned stream will cache it's head on first call and will wrap it's tail
-  into lazy as well. While this boost subsequent reads it can have side effect
-  of high memory usage. So it should be used with care for expensive
-  computations (that require network access for example). Wrapping infinite 
-  streams with this may not be the best idea, but possible since stream is lazy
-  it will only cache part that was read.
-  @param {Function} source
-     source stream to cache.
-  @returns {Function}
-     lazy equivalent of the given source.
-  **/
-
-  var promised
-  return function stream(next) {
-    if (!promised) {
-      promised = promise()
-      source(function(head, tail) {
-        deliver(promised, head, tail ? lazy(tail) : tail)
-      })
-    }
-    promised(next)
-  }
-}
-exports.lazy = lazy
-
-function delay(source, time) {
-  /**
-  Takes a `source` stream and return stream of it's elements, such that each
-  element yield is delayed with a given `time` (defaults to 1) in milliseconds.
-  **/
-  time = time || 1
-  return function stream(next) {
-    source(function forward(head, tail) {
-      setTimeout(next, time, head, tail ? delay(tail, time) : tail)
-    })
-  }
-}
-exports.delay = delay
-
-function handle(handler, source) {
-  /**
-  Takes an error `handler` function that is called on error in the given
-  source stream. `lambda` will be called with an error value and a sub-stream
-  reading which caused an error. If error handler returns a stream it will be
-  used as tail of the given stream from that point on, otherwise error will
-  propagate.
-  **/
-  return function stream(next) {
-    source(function interfere(head, tail) {
-      if (tail) return next(head, handle(handler, tail))
-      tail = head ? handler(head, source) : tail
-      tail ? tail(next) : next(head)
-    })
-  }
-}
-exports.handle = handle
 
 });
