@@ -204,13 +204,11 @@ Stream.prototype.alter = function alter(transform, handle) {
   stream returned by the `transform` function (Difference is that `alter`
   returns stream immediately while transform is called on demand).
   **/
-  return Object.create(this, {
-    then: { value: function then(deliver, reject) {
-      return Object.getPrototypeOf(this).then(function(value) {
-        var result = transform ? transform.call(value, value) : value
-        return deliver ? deliver(result) : result
-      }, handle || reject)
-    }}
+  var source = this
+  return Stream.promise(function(deliver, reject) {
+    source.then(function(value) {
+      deliver(transform ? transform.call(value, value) : value)
+    }, handle || reject)
   })
 }
 
