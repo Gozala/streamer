@@ -474,8 +474,9 @@ Stream.prototype.delay = function delay(ms) {
   element yield is delayed with a given `time` (defaults to 1) in milliseconds.
   **/
   return this.alter(function forward() {
+    var source = this
     return this && Stream.promise(function(deliver) {
-      setTimeout(deliver, ms || 1, Stream(this.head, this.tail.delay(ms)))
+      setTimeout(deliver, ms || 1, Stream(source.head, source.tail.delay(ms)))
     })
   })
 }
