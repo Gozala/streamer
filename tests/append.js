@@ -7,48 +7,55 @@
 
 'use strict';
 
-var streamer = require('../core'),
-    append = streamer.append, list = streamer.list, delay = streamer.delay
-var test = require('./utils').test
+var Stream = require('../core').Stream
 
-exports['test append empty streams'] = function(assert, done) {
-  test(assert, done, append(list(), list()), [])
+exports.Assert = require('./assert').Assert
+
+exports['test append empty streams'] = function(test, complete) {
+  var actual = Stream.empty.append(Stream.empty)
+  test(actual).to.be.empty().then(complete)
 }
 
-exports['test append empty'] = function(assert, done) {
-  test(assert, done, append(list(1, 2), list()), [1, 2])
+exports['test append empty'] = function(test, complete) {
+  var actual = Stream.of(1, 2).append(Stream.empty)
+  test(actual).to.be(1, 2).then(complete)
 }
 
-exports['test append to empty'] = function(assert, done) {
-  test(assert, done, append(list(), list(3, 4)), [3, 4])
+exports['test append to empty'] = function(test, complete) {
+  var actual = Stream.empty.append(Stream.of(3, 4))
+  test(actual).to.be(3, 4).then(complete)
 }
 
-exports['test append many streams'] = function(assert, done) {
-  var stream = append(list(1, 2), list(), list('a', 'b'), list())
-  test(assert, done, stream, [1, 2, 'a', 'b'])
+exports['test append many streams'] = function(test, complete) {
+  var actual = Stream.of(1, 2).append(Stream.empty).
+                               append(Stream.of('a', 'b')).
+                               append(Stream.empty)
+  test(actual).to.be(1, 2, 'a', 'b').then(complete)
 }
 
-exports['test append sync & async streams'] = function(assert, done) {
-  var async = delay(list(3, 2, 1))
-  var stream = append(async, list(), async, list('a', 'b'))
-  test(assert, done, stream, [ 3, 2, 1, 3, 2, 1, 'a', 'b' ])
+exports['test append sync & async streams'] = function(test, complete) {
+  var async = Stream.of(3, 2, 1).delay()
+  var actual = async.append(Stream.empty).
+                     append(async).
+                     append(Stream.of('a', 'b'))
+  test(actual).to.be(3, 2, 1, 3, 2, 1, 'a', 'b').then(complete)
 }
 
-exports['test append & reappend'] = function(assert, done) {
-  var async = delay(list(3, 2, 1))
-  var stream = append(async, list('a', 'b'))
-  stream = append(stream, list('||'), stream)
-  test(assert, done, stream, [ 3, 2, 1, 'a', 'b', '||', 3, 2, 1, 'a', 'b' ])
+exports['test append & reappend'] = function(test, complete) {
+  var async = Stream.of(3, 2, 1).delay()
+  var stream = async.append(Stream.of('a', 'b'))
+  var actual = stream.append(Stream.of('||').append(stream))
+  test(actual).to.be(3, 2, 1, 'a', 'b', '||', 3, 2, 1, 'a', 'b').then(complete)
 }
 
-exports['test map broken stream'] = function(assert, done) {
-  var boom = Error('Boom!!')
-  function broken(next) { next(boom) }
-  var async = delay(append(list(3, 2, 1), broken))
+exports['test map broken stream'] = function(test, complete) {
+  var boom = Error('Boom!')
+  var async = Stream.of(3, 2, 1).append(Stream.error(boom)).delay()
+  var actual = Stream.of('>').append(async).
+                              append(Stream.of(1, 2)).
+                              append(async)
 
-  var stream = append(list('>'), async, list(1, 2), async)
-
-  test(assert, done, stream, [ '>', 3, 2, 1 ], boom)
+  test(actual).to.have.elements('>', 3, 2, 1).and.error(boom).then(complete)
 }
 
 if (module == require.main)
