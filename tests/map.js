@@ -7,40 +7,35 @@
 
 'use strict';
 
-var streamer = require('../core'),
-    map = streamer.map, list = streamer.list, append = streamer.append,
-    on = streamer.on, delay = streamer.delay
-var test = require('./utils').test
+var Stream = require('../core').Stream
 
-exports['test map empty'] = function(assert, done) {
-  var empty = list()
-  var mapped = map(function onEach(element) {
-    assert.fail('mapper was executed')
-  }, empty)
-  test(assert, done, mapped, [])
+exports.Assert = require('./assert').Assert
+exports['test map empty'] = function(test, complete) {
+  var actual = Stream.empty.map(function(element) {
+    test.fail('map fn was executed')
+  })
+  test(actual).to.be.empty().then(complete)
 }
 
-exports['test number map'] = function(assert, done) {
-  var numbers = list(1, 2, 3, 4)
-  var doubled = map(function onElement(number) { return number * 2 }, numbers)
-  test(assert, done, doubled, [2, 4, 6, 8])
+exports['test number map'] = function(test, complete) {
+  var numbers = Stream.of(1, 2, 3, 4)
+  var actual = numbers.map(function(number) { return number * 2 })
+  test(actual).to.be(2, 4, 6, 8).then(complete)
 }
 
-exports['test map with async stream'] = function(assert, done) {
-  var stream = delay(list(5, 4, 3, 2, 1))
-  var mapped = map(function(x) { return x + 1 }, stream)
-  test(assert, done, mapped, [ 6, 5, 4, 3, 2 ])
+exports['test map with async stream'] = function(test, complete) {
+  var stream = Stream.of(5, 4, 3, 2, 1).delay()
+  var mapped = stream.map(function(x) { return x + 1 })
+  test(mapped).to.be(6, 5, 4, 3, 2).then(complete)
 }
 
-exports['test map broken stream'] = function(assert, done) {
-  var error = Error('Boom!')
-  var stream = delay(append(list(3, 2, 1), function(next) {
-    next(error)
-  }))
-  var mapped = map(function(x) { return x * x }, stream)
-  var expected = [ 9, 4, 1]
+exports['test map broken stream'] = function(test, complete) {
+  var boom = Error('Boom!')
+  var stream = Stream.of(3, 2, 1).append(Stream.error(boom)).delay()
+  var actual = stream.map(function(x) { return x * x })
+  var expected = [ 9, 4, 1 ]
 
-  test(assert, done, mapped, expected, error);
+  test(actual).to.have.elements(9, 4, 1).and.an.error(boom).then(complete)
 }
 
 if (module == require.main)
