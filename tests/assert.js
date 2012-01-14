@@ -61,8 +61,12 @@ function dsl(api) {
 
 var assert = dsl({
   and: null,
-  have: null,
-  elements: null,
+  have: function have() {
+    this.expected = Array.prototype.slice.call(arguments)
+  },
+  elements: function elements() {
+    this.expected = Array.prototype.slice.call(arguments)
+  },
   expect: function expect(actual) {
     this.actual = actual
   },
@@ -108,7 +112,7 @@ exports.Assert = function Assert() {
   var assertions = []
   setTimeout(runAsserts, 10, test, assertions)
 
-  return function expect(actual) {
+  function expect(actual) {
     var assertion = {
       actual: actual,
       expected: [],
@@ -117,6 +121,9 @@ exports.Assert = function Assert() {
     assertions.push(assertion)
     return assert(assertion)
   }
+  expect.fail = test.fail.bind(test)
+  expect.pass = test.pass.bind(test)
+  return expect
 }
 
 });
