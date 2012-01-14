@@ -7,40 +7,48 @@
 
 'use strict';
 
-var streamer = require('../core.js'),
-    take = streamer.take, list = streamer.list, empty = streamer.empty,
-    delay = streamer.delay, append = streamer.append
-var test = require('./utils.js').test
 
-exports['test take empty'] = function(assert, done) {
-  test(assert, done, take(1, empty), [])
+var Stream = require('../core').Stream
+
+exports.Assert = require('./assert').Assert
+
+exports['test take empty'] = function(test, complete) {
+  var actual = Stream.empty.take(100)
+  test(actual).to.be.empty().then(complete)
 }
 
-exports['test take more than have'] = function(assert, done) {
-  var numbers = list(1, 2, 3)
-  test(assert, done, take(5, numbers), [1, 2, 3])
+exports['test take more than have'] = function(test, complete) {
+  var actual = Stream.of(1, 2, 3)
+  test(actual.take(5)).to.be(1, 2, 3).then(complete)
 }
 
-exports['test take on async stream'] = function(assert, done) {
-  var stream = delay(list(5, 4, 3, 2, 1))
-  test(assert, done, take(3, stream), [ 5, 4, 3 ])
+exports['test take falls back to all'] = function(test, complete) {
+  var actual = Stream.of(1, 2, 3)
+  test(actual.take()).to.be(1, 2, 3).then(complete)
 }
 
-exports['test take before error'] = function(assert, done) {
-  var stream = delay(append(list(3, 2, 1), function broken(next) {
-    next(Error('Boom!'))
-  }))
-
-  test(assert, done, take(3, stream), [ 3, 2, 1 ])
+exports['test take may be given 0'] = function(test, complete) {
+  var actual = Stream.of(1, 2, 3)
+  test(actual.take(0)).to.be.empty().then(complete)
 }
 
-exports['test error on take'] = function(assert, done) {
-  var error = Error('Boom!')
-   var stream = delay(append(list(3, 2, 1), function broken(next) {
-    next(error)
-  }))
+exports['test take on async stream'] = function(test, complete) {
+  var actual = Stream.of(5, 4, 3, 2, 1).delay()
+  test(actual.take(3)).to.be(5, 4, 3).then(complete)
+}
 
-  test(assert, done, take(5, stream), [3, 2, 1], error)
+exports['test take before error'] = function(test, complete) {
+  var boom = Error('Boom!')
+  var actual = Stream.of(3, 2, 1).append(Stream.error(boom)).delay()
+
+  test(actual.take(3)).to.be(3, 2, 1).then(complete)
+}
+
+exports['test error on take'] = function(test, complete) {
+  var boom = Error('Boom!')
+  var actual = Stream.of(3, 2, 1).append(Stream.error(boom)).delay()
+
+  test(actual.take(5)).to.have.elements(3, 2, 1).and.error(boom).then(complete)
 }
 
 if (module == require.main)

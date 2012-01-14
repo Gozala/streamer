@@ -244,7 +244,8 @@ Stream.prototype.take = function take(n) {
      // 10
      // 23
   **/
-  return this.alter(function() {
+  n = n === undefined ? Infinity : n   // `n` falls back to infinity.
+  return n === 0 ? Stream.empty : this.alter(function() {
     return n - 1 > 0 ? this && Stream(this.head, this.tail.take(n - 1))
                      : this && Stream(this.head, Stream.empty)
   })
