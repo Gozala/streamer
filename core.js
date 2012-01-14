@@ -230,31 +230,6 @@ Stream.prototype.print = function(fallback) {
   }
 }()
 
-Stream.prototype.map = function map(fn) {
-  /**
-  Returns stream of mapped values.
-  @param {Function} lambda
-     function that maps each value
-  @param {Function} input
-     source stream to be mapped
-  @examples
-     var stream = list({ name: 'foo' },  { name: 'bar' })
-     var names = map(function(value) { return value.name }, stream)
-     names(console.log)
-     // 'foo'
-     // 'bar'
-     var numbers = list(1, 2, 3)
-     var mapped = map(function onEach(number) { return number * 2 }, numbers)
-     mapped(console.log)
-     // 2
-     // 4
-     // 6
-  **/
-  return this.alter(function() {
-    return this && Stream(fn(this.head), this.tail.map(fn))
-  })
-}
-
 Stream.prototype.take = function take(n) {
   /**
   Returns stream containing first `n` elements of given `source` stream.
@@ -291,6 +266,31 @@ Stream.prototype.drop = function drop(n) {
   **/
   return this.alter(function() {
     return this && n > 0 ? this.tail.drop(n - 1) : this
+  })
+}
+
+Stream.prototype.map = function map(fn) {
+  /**
+  Returns stream of mapped values.
+  @param {Function} lambda
+     function that maps each value
+  @param {Function} input
+     source stream to be mapped
+  @examples
+     var stream = list({ name: 'foo' },  { name: 'bar' })
+     var names = map(function(value) { return value.name }, stream)
+     names(console.log)
+     // 'foo'
+     // 'bar'
+     var numbers = list(1, 2, 3)
+     var mapped = map(function onEach(number) { return number * 2 }, numbers)
+     mapped(console.log)
+     // 2
+     // 4
+     // 6
+  **/
+  return this.alter(function() {
+    return this && Stream(fn(this.head), this.tail.map(fn))
   })
 }
 
