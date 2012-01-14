@@ -7,14 +7,12 @@
 
 'use strict';
 
-var streamer = require('../core'),
-    iterate = streamer.iterate, take = streamer.take
-var test = require('./utils').test
+var Stream = require('../core').Stream
 
-exports['test basic iterate'] = function(assert) {
-  var numbers = iterate(function incriment(x) { return x + 1 }, 0)
-  test(assert, Object, take(5, numbers), [ 0, 1, 2, 3, 4 ])
-  test(assert, Object, take(10, numbers), [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ])
+exports.Assert = require('./assert').Assert
+exports['test basic iterate'] = function(expect, complete) {
+  var numbers = Stream.iterate(function incriment(x) { return x + 1 }, 0)
+  expect(numbers.take(5)).to.be(0, 1, 2, 3, 4).and.then(complete)
 }
 
 if (module == require.main)
