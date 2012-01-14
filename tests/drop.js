@@ -7,45 +7,52 @@
 
 'use strict';
 
-var streamer = require('../core.js'),
-    drop = streamer.drop, list = streamer.list, delay = streamer.delay,
-    append = streamer.append
-var test = require('./utils.js').test
+var Stream = require('../core').Stream
 
-exports['test drop empty'] = function(assert, done) {
-  var empty = list()
-  test(assert, done, drop(2, empty), [])
+exports.Assert = require('./assert').Assert
+
+exports['test drop empty'] = function(test, complete) {
+  var actual = Stream.empty.drop(100)
+  test(actual).to.be.empty().then(complete)
 }
 
-exports['test drop on sync stream'] = function(assert, done) {
-  var numbers = list(1, 2, 3, 4)
-  test(assert, done, drop(3, numbers), [ 4 ])
+exports['test drop on sync stream'] = function(test, complete) {
+  var actual = Stream.of(1, 2, 3, 4)
+  test(actual.drop(3)).to.be(4).then(complete)
 }
 
-
-exports['test drop more than have'] = function(assert, done) {
-  var numbers = list(1, 2, 3, 4)
-  test(assert, done, drop(5, numbers), [])
+exports['test drop falls back to 1'] = function(test, complete) {
+  var actual = Stream.of(1, 2, 3, 4)
+  test(actual.drop()).to.be(2, 3, 4).then(complete)
 }
 
-
-exports['test drop of async stream'] = function(assert, done) {
-  var stream = delay(list(5, 4, 3, 2, 1))
-  test(assert, done, drop(2, stream), [ 3, 2, 1 ])
+exports['test drop can take 0'] = function(test, complete) {
+  var actual = Stream.of(1, 2, 3, 4)
+  test(actual.drop(0)).to.be(1, 2, 3, 4).then(complete)
 }
 
-exports['test drop on stream with error'] = function(assert, done) {
-  var error = Error('Boom')
-  var stream = delay(append(list(4, 3, 2, 1), function(next) { next(error) }))
-
-  test(assert, done, drop(2, stream), [ 2, 1 ], error)
+exports['test drop more than have'] = function(test, complete) {
+  var actual = Stream.of(1, 2, 3, 4)
+  test(actual.drop(5)).to.be.empty().then(complete)
 }
 
-exports['test drop on stream with error in head'] = function(assert, done) {
-  var error = Error('Boom!')
-  var stream = delay(append(function(next) { next(error) }, list(3, 2, 1)))
+exports['test drop of async stream'] = function(test, complete) {
+  var actual = Stream.of(5, 4, 3, 2, 1).delay()
+  test(actual.drop(2)).to.be(3, 2, 1).then(complete)
+}
 
-  test(assert, done, drop(2, stream), [], error)
+exports['test drop on stream with error'] = function(test, complete) {
+  var boom = Error('Boom!')
+  var actual = Stream.of(4, 3, 2, 1).append(Stream.error(boom)).delay()
+
+  test(actual.drop(2)).to.have.elements(2, 1).and.error(boom).then(complete)
+}
+
+exports['test drop on stream with error in head'] = function(test, complete) {
+  var boom = Error('Boom!')
+  var actual = Stream.error(boom).append(Stream.of(4, 3, 2, 1)).delay()
+
+  test(actual.drop(2)).to.have.elements().and.error(boom).then(complete)
 }
 
 if (module == require.main)

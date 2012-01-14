@@ -265,6 +265,7 @@ Stream.prototype.drop = function drop(n) {
      // 10
      // 23
   **/
+  n = n === undefined ? 1 : n   // `n` falls back to `1`.
   return this.alter(function() {
     return this && n > 0 ? this.tail.drop(n - 1) : this
   })
