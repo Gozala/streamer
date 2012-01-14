@@ -85,9 +85,9 @@ Stream.promise = function Promise(next) {
         if (forward) forward(value)
       }
 
-      function fail() {
+      function fail(reason) {
         pending = false
-        if (reject) value = reject(value)
+        if (reject) value = reject(reason)
         else error = reason
       }
 
