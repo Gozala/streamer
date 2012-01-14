@@ -7,46 +7,47 @@
 
 'use strict';
 
-var streamer = require('../core.js'),
-    flatten = streamer.flatten, list = streamer.list, delay = streamer.delay,
-    append = streamer.append
-var test = require('./utils.js').test
+var Stream = require('../core').Stream
 
-exports['test flatten stream of empty streams'] = function(assert, done) {
-  test(assert, done, flatten(list(list(), list())), [])
+exports.Assert = require('./assert').Assert
+
+exports['test flatten stream of empty streams'] = function(test, complete) {
+  var actual = Stream.of(Stream.empty, Stream.empty).flatten()
+  test(actual).to.be.empty().then(complete)
 }
 
-exports['test flatten empty & non-empty'] = function(assert, done) {
-  test(assert, done, flatten(list(list(), list(1, 2), list())), [1, 2])
+exports['test flatten empty & non-empty'] = function(test, complete) {
+  var actual = Stream.of(Stream.empty, Stream.of(1, 2), Stream.empty).flatten()
+  test(actual).to.be(1, 2).then(complete)
 }
 
-exports['test flatten flattened'] = function(assert, done) {
-  var stream = flatten(list(list(1, 2), list('a', 'b')))
-  stream = flatten(list(list('>'), stream, list()))
-  test(assert, done, stream, ['>', 1, 2, 'a', 'b'])
+exports['test flatten flattened'] = function(test, complete) {
+  var stream = Stream.of(Stream.of(1, 2), Stream.of('a', 'b')).flatten()
+  var actual = Stream.of(Stream.of('>'), stream, Stream.empty).flatten()
+  test(actual).to.be('>', 1, 2, 'a', 'b').then(complete)
 }
 
-exports['test flatten sync & async streams'] = function(assert, done) {
-  var async = delay(list(3, 2, 1))
-  var stream = flatten(list(async, list('|'), async, list('a', 'b'), list()))
-  test(assert, done, stream, [ 3, 2, 1, '|', 3, 2, 1, 'a', 'b' ])
+exports['test flatten sync & async streams'] = function(test, complete) {
+  var async = Stream.of(3, 2, 1).delay()
+  var actual = Stream.of(async, Stream.of('|'), async, Stream.of('a', 'b'),
+                         Stream.empty).flatten()
+  test(actual).to.be(3, 2, 1, '|', 3, 2, 1, 'a', 'b').then(complete)
 }
 
-exports['test flatten with broken stream'] = function(assert, done) {
+exports['test flatten with broken stream'] = function(test, complete) {
   var boom = Error('Boom!')
-  var async = delay(append(list(3, 2, 1), function(next) { next(boom) }))
+  var async = Stream.of(3, 2, 1).append(Stream.error(boom)).delay()
+  var actual = Stream.of(Stream.of('>'), async, Stream.of(1, 2)).flatten()
 
-  var stream = flatten(list(list('>'), async, list(1, 2) ))
-  test(assert, done, stream, [ '>', 3, 2, 1 ], boom)
+  test(actual).to.have.elements('>', 3, 2, 1).and.error(boom).then(complete)
 }
 
-exports['test flatten async stream of streams'] = function(assert, done) {
-  var async = delay(list(3, 2, 1))
-  var stream = delay(list(list(), list(1, 2), async, list('a', 'b'), async))
-  var expected = [ 1, 2, 3, 2, 1, 'a', 'b', 3, 2, 1 ]
-  var actual = flatten(stream)
+exports['test flatten async stream of streams'] = function(test, complete) {
+  var async = Stream.of(3, 2, 1).delay()
+  var actual = Stream.of(Stream.empty, Stream.of(1, 2), async,
+                         Stream.of('a', 'b'), async).flatten()
 
-  test(assert, done, actual, expected)
+  test(actual).to.be(1, 2, 3, 2, 1, 'a', 'b', 3, 2, 1).then(complete)
 }
 
 if (module == require.main)
