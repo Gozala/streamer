@@ -105,6 +105,13 @@ Stream.promise = function Promise(next) {
   })
 }
 
+Stream.error = function error(reason) {
+  /**
+  Returns a stream with that errors with a given `reason`.
+  **/
+  return Stream.promise(function(deliver, reject) { reject(reason) })
+}
+
 Stream.repeat = function repeat(value) {
   /**
   Returns a stream of `value`s.
