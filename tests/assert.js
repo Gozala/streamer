@@ -33,6 +33,7 @@ function runAsserts(assert, assertions) {
     if (assertion.task) assertion.task()
     runAsserts(assert, assertions)
   })
+  if (assertion.setup) assertion.setup()
 }
 
 function dsl(api) {
@@ -60,7 +61,9 @@ function dsl(api) {
 }
 
 var assert = dsl({
-  and: null,
+  and: function and(setup) {
+    this.setup = setup
+  },
   have: function have() {
     this.expected = Array.prototype.slice.call(arguments)
   },
@@ -116,13 +119,13 @@ exports.Assert = function Assert() {
     var assertion = {
       actual: actual,
       expected: [],
-      error: null
+      error: null,
+      expect: expect
     }
     assertions.push(assertion)
     return assert(assertion)
   }
-  expect.fail = test.fail.bind(test)
-  expect.pass = test.pass.bind(test)
+  expect.assert = test
   return expect
 }
 
