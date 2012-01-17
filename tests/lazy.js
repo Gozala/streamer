@@ -7,118 +7,97 @@
 
 'use strict';
 
-var streamer = require('../core'),
-    lazy = streamer.lazy, list = streamer.list, delay = streamer.delay,
-    append = streamer.append, stream = streamer.stream, take = streamer.take
+var Stream = require('../core').Stream
 
-var test = require('./utils').test
+exports.Assert = require('./assert').Assert
 
-exports['test lazy empty list'] = function(assert, done) {
-  test(assert, done, lazy(list()), [])
+exports['test lazy empty list'] = function(test, complete) {
+  test(Stream.empty.lazy()).to.be.empty().then(complete)
 }
 
-exports['test number list'] = function(assert, done) {
-  test(assert, done, lazy(list(1, 2, 3)), [ 1, 2, 3 ])
+exports['test number list'] = function(test, complete) {
+  var actual = Stream.of(1, 2, 3).lazy()
+
+  test(actual).to.be(1, 2, 3).then(complete)
 }
 
-exports['test mixed list'] = function(assert, done) {
-  var error = Error('Boom!'), object = {}, func = function() {}, exp = /foo/
-  test(assert, done, lazy(list('a', 2, 'b', 4, object, func, exp, error)),
-       [ 'a', 2, 'b', 4, object, func, exp, error  ])
-}
-
-exports['test caching in lazy'] = function(assert) {
-  var reads = 0, errors = 0, error = Error('Boom')
-  var actual = lazy(stream(1, function tail(next) {
+exports['test caching in lazy'] = function(test, complete) {
+  var reads = 0, errors = 0, boom = Error('Boom')
+  var actual = Stream(1, function() {
     reads = reads + 1
-    next(2, function(next) {
+    return Stream(2, function() {
       errors = errors + 1
-      next(error)
+      return Stream.error(boom)
     })
-  }))
+  }).lazy()
 
-  test(assert, function() {
-    assert.equal(reads, 0, 'tail have not being accessed yet')
-  }, take(1, actual), [ 1 ])
+  test(actual.take(1)).to.be(1).and.then(function() {
+    test.assert.equal(reads, 0, 'tail have no being accessed')
+  })
 
-  test(assert, function() {
-    assert.equal(reads, 1, 'tail was accessed once')
-  }, take(2, actual), [ 1, 2 ])
+  test(actual.take(2)).to.be(1, 2).and.then(function() {
+    test.assert.equal(reads, 1, 'tail was accessed once')
+  })
 
-  test(assert, function() {
-    assert.equal(reads, 1, 'tail was cached')
-    assert.equal(errors, 0, 'error is not yielded yet')
-  }, take(2, actual), [ 1, 2 ])
+  test(actual.take(2)).to.be(1, 2).and.then(function() {
+    test.assert.equal(reads, 1, 'tail was cached')
+    test.assert.equal(errors, 0, 'error is not yielded yet')
+  })
 
-  test(assert, function() {
-    assert.equal(reads, 1, 'tail was cached')
-    assert.equal(errors, 1, 'error was yielded')
-  }, actual, [ 1, 2 ], error)
+  test(actual).to.have.elements(1, 2).and.error(boom).and.then(function() {
+    test.assert.equal(reads, 1, 'tail was cached')
+    test.assert.equal(errors, 1, 'error was yielded')
+  })
 
-  test(assert, function() {
-    assert.equal(reads, 1, 'tail was cached')
-    assert.equal(errors, 1, 'error was cached')
-  }, actual, [ 1, 2 ], error)
+  test(actual).to.have.elements(1, 2).and.error(boom).and.then(function() {
+    test.assert.equal(reads, 1, 'tail was cached')
+    test.assert.equal(errors, 1, 'error was cached')
+    complete()
+  })
 }
 
-exports['test async but lazy'] = function(assert, done) {
-  var reads = 0, errors = 0, error = Error('Boom')
-  var actual = lazy(delay(stream(1, function tail(next) {
+exports['test async but lazy'] = function(test, complete) {
+  var reads = 0, errors = 0, boom = Error('Boom'), turned = false
+  var actual = Stream(1, function() {
     reads = reads + 1
-    next(2, function(next) {
+    return Stream(2, function() {
       errors = errors + 1
-      next(error)
+      return Stream.error(boom)
     })
-  })))
+  }).delay().lazy()
 
-  var steps = [
-    function on_first_read_async(next) {
-      test(assert, next, take(1, actual), [ 1 ])
-    },
-    function on_next_read_sync(next, turned) {
-      assert.ok(turned, 'element was yielded on next turn')
-      test(assert, next, take(1, actual), [ 1 ])
-    },
-    function second_read_sync(next, turned) {
-      assert.ok(!turned, 'head was cashed')
-      assert.equal(reads, 0, 'tail have not being accessed yet')
-      test(assert, next, take(2, actual), [ 1, 2 ])
-    },
-    function(next, turned) {
-      assert.ok(turned, 'element was yielded on next turn')
-      assert.equal(reads, 1, 'tail was accessed once')
-      test(assert, next, take(2, actual), [ 1, 2 ])
-    },
-    function(next, turned) {
-      assert.ok(!turned, 'tail was cashed')
-      assert.equal(reads, 1, 'tail was cached')
-      assert.equal(errors, 0, 'error is not yielded yet')
-      test(assert, next, actual, [ 1, 2 ], error)
-    },
-    function(next, turned) {
-      assert.ok(turned, 'element was yielded on next turn')
-      assert.equal(reads, 1, 'tail was cached')
-      assert.equal(errors, 1, 'error was yielded')
+  function turn() { turned = true }
 
-      test(assert, next, actual, [ 1, 2 ], error)
-    },
-    function(next, turned) {
-      assert.ok(!turned, 'tail was cached')
+  test(actual.take(1)).to.have.elements(1).and(turn).then(function() {
+    test.assert.ok(turned, 'was async')
+    turned = false
+  })
 
-      assert.equal(reads, 1, 'tail was cached')
-      assert.equal(errors, 1, 'error was cached')
-      done()
-    }
-  ]
+  test(actual.take(1)).to.have.elements(1).and(turn).then(function() {
+    test.assert.ok(!turned, 'head was cashed')
+    test.assert.equal(reads, 0, 'tail has not being read yet')
+    turned = false
+  })
 
-  function next() {
-    var turned = false
-    steps.shift()(function() {
-      steps.shift()(next, turned)
-    }, turned)
-    turned = true
-  }
-  next()
+  test(actual.take(2)).to.have.elements(1, 2).and(turn).then(function() {
+    test.assert.ok(turned, 'elements was yielded on next turn')
+    test.assert.equal(reads, 1, 'tail was accessed once')
+    turned = false
+  })
+
+  test(actual.take(2)).to.have.elements(1, 2).and(turn).then(function() {
+    test.assert.ok(!turned, 'read in the same turn')
+    test.assert.equal(reads, 1, 'tail was cashed')
+    test.assert.equal(errors, 0, 'error is not yielded yet')
+    turned = false
+  })
+
+  test(actual).to.have.elements(1, 2).and.error(boom).and(turn).then(function() {
+    test.assert.ok(!turned, 'read in the same turn')
+    test.assert.equal(reads, 1, 'tail was cached')
+    test.assert.equal(errors, 1, 'error was propagated')
+    complete()
+  })
 }
 
 if (module == require.main)
