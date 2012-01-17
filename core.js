@@ -226,23 +226,24 @@ Stream.prototype.print = function(fallback) {
         write('', stream.head)
         stream.tail.print(write, true)
       }, 1, this)
+    }, function(reason) {
+      write('', '/' + reason + '/>')
     })
   }
 }()
 
 Stream.prototype.take = function take(n) {
   /**
-  Returns stream containing first `n` elements of given `source` stream.
+  Returns stream containing first `n` (or all if has less) elements of `this`
+  stream.
 
   @param {Number} n
     Number of elements to take.
   @param {Function} source
     source stream to take elements from.
   @examples
-     var numbers = list(10, 23, 2, 7, 17)
-     take(2, numbers)(console.log)
-     // 10
-     // 23
+     var numbers = Stream.of(10, 23, 2, 7, 17)
+     numbers.take(2).print()        // <stream 10 23 />
   **/
   n = n === undefined ? Infinity : n   // `n` falls back to infinity.
   return n === 0 ? Stream.empty : this.alter(function() {
