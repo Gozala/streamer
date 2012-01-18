@@ -198,7 +198,7 @@ Stream.error = function error(reason) {
   return deferred.promise
 }
 /**
-  Empty stream. Faster equivalent of `list()`.
+Empty stream. Empty stream resolves to `null`.
 **/
 Stream.empty = Stream.promise(function(resolve) { resolve(null) })
 Stream.repeat = function repeat(value) {
@@ -231,19 +231,31 @@ Stream.iterate = function iterate(fn, value) {
 }
 Stream.from = function from(value) {
   /**
-  Creates stream from the given array / string.
-  @examples
-    Stream.from([ 1, 2, 3, 4 ])   // => <1, 2, 3, 4>
-    Stream.from('hello')          // => <'h', 'e', 'l', 'l', 'o'>
+  Creates stream from the given array, string or arguments object.
+
+  ## Examples
+
+  Stream.from([ 1, 2, 3, 4 ]).print()   // <stream 1 2 3 4 />
+  Stream.from('hello').print()          // <stream h e l l o />
   **/
   return !value.length ? this.empty : this(value[0], function rest() {
     return this.constructor.from(Array.prototype.slice.call(value, 1))
   })
 }
+Stream.of = function of() {
+  /**
+  Returns stream of given arguments.
 
+  ## Examples
+
+  Stream.of('a', 2, {}) // <stream a 2 [object Object] />
+  **/
+  return this.from(arguments)
+}
+/*
 Stream.map = function map(fn) {
   /**
-  Returns a stream consisting of the result of applying `lambda` to the
+  Returns a stream consisting of the result of applying `fn` to the
   set of first elements of each stream, followed by applying `lambda` to the
   set of second elements in each stream, until any one of the streams is
   exhausted. Any remaining elements in other streams are ignored. Function
@@ -259,13 +271,14 @@ Stream.map = function map(fn) {
      // 2
      // 4
      // 6
-  **/
+  ** /
   var streams = Array.prototype.slice.call(arguments, 1)
   var stream = streams.reduce(function(stream, source) {
     stream.zip(source)
   }, streams.shift())
   return stream.map(Array.flatten).map(fn)
 }
+*/
 
 Stream.prototype.then = function then(resolve, reject) {
   /**
@@ -280,7 +293,6 @@ Stream.prototype.then = function then(resolve, reject) {
   deferred.resolve(resolve.call(this, this))
   return deferred.promise
 }
-
 Stream.prototype.alter = function alter(transform, handle) {
   /**
   Primary function for composing streams out of `this` stream. This method is
@@ -314,19 +326,22 @@ Stream.prototype.alter = function alter(transform, handle) {
     promise.then(resolve, reject)
   }, this)
 }
-
 Stream.prototype.print = function(fallback) {
-  fallback = typeof(process) === 'undefined' ? console.log.bind(console) : function() {
+  // `print` may be passed a writer function but if not (common case) then it
+  // should print with existing facilities. On node use `process.stdout.write`
+  // to avoid line breaks that `console.log` uses. If there is no `process`
+  // then fallback to `console.log`.
+  fallback = typeof(process) !== 'undefined' ? function write() {
     process.stdout.write(Array.prototype.slice.call(arguments).join(' '))
-  }
+  } : console.log.bind(console)
 
   return function print(write, continuation) {
     /**
-    Utility function to print streams.
-    @param {Function} stream
-       stream to print
-    @examples
-       print(list('Hello', 'world'))
+    Utility method for printing streams. Optionally print may be passed a
+    `write` function that will be used for writing. If `write` not passed it
+    will fallback to `process.stdout.write` on node or to `console.log` if not
+    on node.
+    @param {Function} [write]
     **/
     write = write || fallback
     this.then(function() {
@@ -337,23 +352,24 @@ Stream.prototype.print = function(fallback) {
         stream.tail.print(write, true)
       }, 1, this)
     }, function(reason) {
-      write('', '/' + reason + '/>')
+      write('', '/' + reason + '>')
     })
   }
 }()
-
 Stream.prototype.take = function take(n) {
   /**
   Returns stream containing first `n` (or all if has less) elements of `this`
   stream.
-
   @param {Number} n
     Number of elements to take.
-  @param {Function} source
-    source stream to take elements from.
-  @examples
-     var numbers = Stream.of(10, 23, 2, 7, 17)
-     numbers.take(2).print()        // <stream 10 23 />
+
+  ## Examples
+
+  var numbers = Stream.of(10, 23, 2, 7, 17)
+  numbers.take(2).print()           // <stream 10 23 />
+  numbers.take(100).print()         // <stream 10 23 2 7 17 />
+  numbers.take().print()            // <stream 10 23 2 7 17 />
+  numbers.take(0).print()           // <stream />
   **/
   n = n === undefined ? Infinity : n   // `n` falls back to infinity.
   return n === 0 ? Stream.empty : this.alter(function() {
@@ -361,67 +377,59 @@ Stream.prototype.take = function take(n) {
                      : this && this.constructor(this.head, Stream.empty)
   })
 }
-
 Stream.prototype.drop = function drop(n) {
   /**
-  Returns stream of all, but the first `n` elements of the given `source`
-  stream.
+  Returns stream of this elements except first `n` ones. Returns empty stream
+  has less than `n` elements.
   @param {Number} n
-    Number of elements to take.
-  @param {Function} source
-    source stream to take elements from.
-  @examples
-     var numbers = list(10, 23, 2, 7, 17)
-     drop(3, numbers)(console.log)
-     // 10
-     // 23
+    Number of elements to drop.
+
+  ## Examples
+
+  var numbers = Stream.of(10, 23, 2, 7, 17)
+  numbers.drop(3).print()         // <stream 7 17 />
+  numbers.drop(100).print()       // <stream />
+  numbers.drop().print()          // <stream 23 2 7 17 />
+  numbers.drop(0).print()         // <stream 10 23 2 7 17 />
   **/
-  n = n === undefined ? 1 : n   // `n` falls back to `1`.
+  n = n === undefined ? 1 : n       // `n` falls back to `1`.
   return this.alter(function() {
     return this && n > 0 ? this.tail.drop(n - 1) : this
   })
 }
-
 Stream.prototype.map = function map(f) {
   /**
-  Returns stream of mapped values.
-  @param {Function} lambda
+  Returns a stream consisting of the result of applying `f` to the
+  elements of `this` stream.
+  @param {Function} fn
      function that maps each value
-  @param {Function} input
-     source stream to be mapped
-  @examples
-     var stream = list({ name: 'foo' },  { name: 'bar' })
-     var names = map(function(value) { return value.name }, stream)
-     names(console.log)
-     // 'foo'
-     // 'bar'
-     var numbers = list(1, 2, 3)
-     var mapped = map(function onEach(number) { return number * 2 }, numbers)
-     mapped(console.log)
-     // 2
-     // 4
-     // 6
+
+  ## Examples
+
+  var objects = Stream.of({ name: 'foo' },  { name: 'bar' })
+  var names = objects.map(function($) { return $.name })
+  names.print()       // <stream foo bar />
+
+  var numbers = Stream.of(1, 2, 3)
+  var doubles = numbers.map(function onEach(number) { return number * 2 })
+  doubles.print()     // <stream 2 4 6 />
   **/
   return this.alter(function() {
     return this && this.constructor(f(this.head), this.tail.map(f))
   })
 }
-
 Stream.prototype.filter = function filter(f) {
   /**
-  Returns stream of filtered values.
-  @param {Function} lambda
+  Returns a stream of elements of this stream on which `f` returned `true`.
+  @param {Function} f
     function that filters values
-  @param {Function} source
-    source stream to be filtered
-  @examples
-    var numbers = list(10, 23, 2, 7, 17)
-    var digits = filter(function(value) {
-      return value >= 0 && value <= 9
-    }, numbers)
-    digits(console.log)
-    // 2
-    // 7
+
+  ## Examples
+  var numbers = Stream.of(10, 23, 2, 7, 17)
+  var digits = numbers.filter(function(value) {
+    return value >= 0 && value <= 9
+  })
+  digits.print()      // <stream 2 7 />
   **/
   return  this.alter(function() {
     return !this ? this :
@@ -429,7 +437,6 @@ Stream.prototype.filter = function filter(f) {
            this.tail.filter(f)
   })
 }
-
 Stream.prototype.zip = function zip(source1, source2, source3) {
   /**
   This function returns stream of tuples, where the n-th tuple contains the
@@ -452,143 +459,108 @@ Stream.prototype.zip = function zip(source1, source2, source3) {
   sources.unshift(Array)
   return Stream.map.apply(sources)
 }
-
 Stream.prototype.append = function append(source) {
   /**
-  Returns a stream that contains all elements of each stream in the order they
-  appear in the original streams. If any of the `source` streams is stopped
-  with an error than it propagates to the resulting stream and it also get's
-  stopped.
-  @examples
-     var stream = append(list(1, 2), list('a', 'b'))
-     stream(console.log)
-     // 1
-     // 2
-     // 'a'
-     // 'b'
+  Returns a stream consisting of elements of `this` stream followed by
+  elements of the given `source` stream. Any errors from `this` or `source`
+  stream propagate to the resulting stream.
+
+  ## Examples
+
+  var stream = Stream.of(1, 2).append('a', 'b')
+  stream.print() // <stream 1 2 'a' 'b' />
   **/
   return this.alter(function() {
     return this ? this.constructor(this.head, this.tail.append(source)) : source
   })
 }
-
 Stream.prototype.flatten = function flatten() {
   /**
-  Takes `source` stream of streams and returns stream that contains all
-  elements of each element stream in the order they appear there. Any error
-  from any stream will propagate up to the resulting stream consumer.
-  @param {Function} source
-     Stream of streams.
-  @examples
-     function async(next, stop) {
-       setTimeout(function() {
-         next('async')
-         stop()
-       }, 10)
-     }
-     var stream = flatten(list(async, list(1, 2, 3)))
-     stream(console.log)
-     // 'async'
-     // 1
-     // 2
-     // 3
+  Expects `this` to be a stream of streams and returns stream consisting of
+  elements of each element stream in the same order as they appear there. All
+  errors propagate up to the resulting stream.
+
+  ## Examples
+
+  var stream = Stream.of(Stream.of('async').delay(), Stream.of(1, 2)).flatten()
+  stream.print()      // <stream async 1 2 />
   **/
   return this.alter(function(stream) {
     return this && this.head.append(this.tail.flatten())
   })
 }
-
 Stream.prototype.mix = function mix(source) {
   /**
-  Returns a stream that contains all elements of each stream in the order those
-  elements are delivered. This is somewhat parallel version of `append`, since
-  it starts reading from all sources simultaneously and yields head that comes
-  first. If sources are synchronous, first come firs serve makes no real sense,
-  in such case, resulting stream contains first elements of each source stream,
-  followed by second elements of each source stream, etc.. Any error from any
-  source stream will propagate up to the resulting stream consumer.
-  @examples
-     var stream = append(list(1, 2), list('a', 'b'))
-     stream(console.log)
-     // 1
-     // 'a'
-     // 2
-     // 'b'
+  Returns a stream consisting of all elements of `this` and `source` stream in
+  order of their accumulation. This is somewhat parallel version of `append`,
+  since it starts reading both streams simultaneously and yields head that
+  comes first. If streams are synchronous, first come firs serve makes no real
+  sense, in which case, resulting stream contains first elements of both stream,
+  followed by second elements of both streams, etc.. All errors will propagate
+  to the resulting.
+  @param {Stream} source
+      Stream to mix elements of `this` stream with.
+
+  ## Examples
+
+  var stream = Stream.of(1, 2).mix(Stream.of('a', 'b'))
+  stream.print()   // <stream 1 a 2 b />
+  Stream.of(1, 2).delay().mix(Stream.of(3, 4)).print() // <stream 3 4 1 2 />
   **/
-  var self = this
-  return Stream.promise(function(deliver, reject) {
-    var values = [], observers = []
-
-    function forward(deliver, reject) {
-      if (values.length) deliver(values.shift())
-      else observer.push(deliver)
-    }
-
-    function fulfill() {
-      if (observers.length) observers.shift()(this)
-      else values.push(this)
-    }
-
-    var first = Stream.promise(forward)
-    var second = Stream.promise(forward)
-    var mixed = first.then(function() {
-      return this ? Stream(this.head, this.tail.mix(second)) : this.second
+  return Stream.promise(function(resolve, reject) {
+    var pending = [ this.constructor.defer(), this.constructor.defer() ]
+    var first = pending[0].promise
+    var last = pending[1].promise
+    var result = first.alter(function() {
+      return this ? this.constructor(this.head, last.mix(this.tail)) : last
     })
 
-    mixed.then(deliver, reject)
+    function resolved(value) { pending.shift().resolve(value) }
+    function rejected(reason) { pending.shift().reject(reason) }
 
-    self.then(fulfill)
-    source.then(fulfill)
-  })
+    this.then(resolved, rejected)
+    source.then(resolved, rejected)
+    result.then(resolve, reject)
+  }, this)
 }
-
 Stream.prototype.merge = function merge() {
   /**
-  Takes `source` stream of streams and returns stream that contains all
-  elements of each element stream in the order they are delivered. This is
+  Expects `this` to be a stream of streams and returns stream consisting of
+  elements of each element stream in the order of their accumulation. This is
   somewhat parallel version of `flatten`, since it starts reading from all
-  element streams simultaneously and yields head that comes first. If sources
-  are synchronous, first come firs serve makes no real sense, in such case,
-  this is exact equivalent of flatten. Any error from any source stream will
-  propagate up to the resulting stream consumer.
-  @param {Function} source
-     Stream of streams.
-  @examples
-     function async(next, stop) {
-       setTimeout(function() {
-         next('async')
-         stop()
-       }, 10)
-     }
-     var stream = merge(list(async, list(1, 2, 3)))
-     stream(console.log)
-     // 1
-     // 2
-     // 3
-     // 'async'
+  element streams simultaneously and yields head that comes first. If streams
+  are synchronous, first come first serve makes no real sense, in which case,
+  this is exact equivalent of flatten. All errors will propagate to the
+  resulting stream.
+
+  ## Examples
+
+  var async = Stream.of('async', 'stream').delay()
+  var stream = Stream.of(async, Stream.of(1, 2, 3))
+  stream.print()    // <stream 1 2 3 async stream />
   **/
   return this.alter(function() {
     return this && this.head.mix(this.tail.merge())
   })
 }
-var ones = Stream.promise(function(deliver) {
-  deliver(Stream(1, this))
-})
-var twos = ones.map(function(n) {
-  return n + 1
-})
-
 Stream.prototype.handle = function handle(handler) {
   /**
-  Takes an error `handler` function that is called on error in the given
-  source stream. `lambda` will be called with an error value and a sub-stream
-  reading which caused an error. If error handler returns a stream it will be
-  used as tail of the given stream from that point on, otherwise error will
-  propagate.
+  Takes an error `handler` function that is called with an error when it occurs
+  in `this` stream. `handler` is expected to return a stream which will be used
+  from that point on. Please note that `handler` wont automatically handle error
+  that occur in streams returned by it.
+
+
+  ## Examples
+
+  var suspect = Stream.of(1, 2, 3, 4).append(Stream.error('Boom'))
+  var fixed = suspect.handle(function(reason) {
+    return reason === 'Boom' ? Stream(5) : Stream.error(reason)
+  })
+  fixed.print()   // <stream 1 2 3 4 5 />
   **/
   return this.alter(null, handler)
 }
-
 Stream.prototype.delay = function delay(ms) {
   /**
   Takes a `source` stream and return stream of it's elements, such that each
@@ -601,14 +573,13 @@ Stream.prototype.delay = function delay(ms) {
     }, this)
   })
 }
-
 Stream.prototype.lazy = function lazy() {
   /**
   Returns a stream equivalent to a given `source`, with a difference that it
   returned stream will cache it's head on first call and will wrap it's tail
   into lazy as well. While this boost subsequent reads it can have side effect
   of high memory usage. So it should be used with care for expensive
-  computations (that require network access for example). Wrapping infinite 
+  computations (that require network access for example). Wrapping infinite
   streams with this may not be the best idea, but possible since stream is lazy
   it will only cache part that was read.
   @param {Function} source
@@ -627,7 +598,6 @@ Stream.prototype.lazy = function lazy() {
     })
   }, this)
 }
-
 Stream.prototype.on = function on(next, stop) {
   /**
   Function takes a stream and returns function that can register `next` and
