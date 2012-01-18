@@ -7,51 +7,56 @@
 
 'use strict';
 
-var streamer = require('../core'),
-    mix = streamer.mix, list = streamer.list, delay = streamer.delay,
-    append = streamer.append
-var test = require('./utils').test
+var Stream = require('../core').Stream
 
-exports['test mix empty streams'] = function(assert, done) {
-  test(assert, done, mix(list(), list()), [])
+exports.Assert = require('./assert').Assert
+
+exports['test mix empty streams'] = function(expect, complete) {
+  var actual = Stream.empty.mix(Stream.empty)
+  expect(actual).to.be.empty().and.then(complete)
 }
 
-exports['test mix empty'] = function(assert, done) {
-  test(assert, done, mix(list(1, 2), list()), [1, 2])
+exports['test mix with empty'] = function(expect, complete) {
+  var actual = Stream.of(1, 2).mix(Stream.of())
+  expect(actual).to.be(1, 2).then(complete)
 }
 
-exports['test mix to empty'] = function(assert, done) {
-  test(assert, done, mix(list(), list(3, 4)), [3, 4])
+exports['test mix to empty'] = function(expect, complete) {
+  var actual = Stream.empty.mix(Stream.of(3, 4))
+  expect(actual).to.be(3, 4).then(complete)
 }
 
-exports['test mix many streams'] = function(assert, done) {
-  var stream = mix(list(1, 2), list(), list('a', 'b'), list())
-  test(assert, done, stream, [ 1, 'a', 2, 'b'])
+exports['test mix many streams'] = function(expect, complete) {
+  var actual = Stream.of(1, 2).mix(Stream.empty).
+                               mix(Stream.of('a', 'b')).
+                               mix(Stream.empty)
+
+  expect(actual).to.be(1, 'a', 2, 'b').then(complete)
 }
 
-exports['test mix sync & async streams'] = function(assert, done) {
-  var async = delay(list(3, 2, 1))
-  var actual = mix(async, list(), async, list('a', 'b'))
-  test(assert, done, actual, [ 'a', 'b', 3, 3, 2, 2, 1, 1, ])
+exports['test mix sync & async streams'] = function(expect, complete) {
+  var async = Stream.of(3, 2, 1).delay()
+  var actual = async.mix(Stream.empty).
+                     mix(async).
+                     mix(Stream.of('a', 'b'))
+  expect(actual).to.be('a', 'b', 3, 3, 2, 2, 1, 1).then(complete)
 }
 
-exports['test mix & remix'] = function(assert, done) {
-  var async = delay(list(3, 2, 1))
-  var stream = mix(async, list('a', 'b'))
-  var actual = mix(stream, list('||'), stream)
-  var expected = [ 'a', '||', 'b', 'a', 'b', 3, 3, 2, 2, 1, 1 ]
+exports['test mix & remix'] = function(expect, complete) {
+  var async = Stream.of(3, 2, 1).delay()
+  var mixed = async.mix(Stream.of('a', 'b'))
+  var actual = mixed.mix(Stream.of('||').mix(mixed))
 
-  test(assert, done, actual, expected)
+  expect(actual).to.be('a', '||', 'b', 'a', 'b', 3, 3, 2, 2, 1, 1).then(complete)
 }
 
-exports['test mix broken stream'] = function(assert, done) {
+exports['test mix broken stream'] = function(expect, complete) {
   var boom = Error('Boom!!')
-  function broken(next) { next(boom) }
-  var async = delay(mix(list(3, 2, 1), broken))
+  var broken = Stream.error(boom)
+  var async = Stream.of(3, 2, 1).mix(broken).delay()
+  var actual = Stream.of('>').mix(async).mix(Stream.of('a', 'b')).mix(async)
 
-  var stream = mix(list('>'), async, list(1, 2), async)
-
-  test(assert, done, stream, [ '>', 1, 2, 3, 3 ], boom)
+  expect(actual).to.have.elements('>', 'a', 'b', 3).and.error(boom).then(complete)
 }
 
 if (module == require.main)
