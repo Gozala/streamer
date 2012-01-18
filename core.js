@@ -7,77 +7,195 @@
 
 'use strict';
 
+exports.Promise = Promise
+function Promise() {
+  /**
+  Returns object containing following properties:
+  - `promise` Eventual value representation implementing CommonJS [Promises/A]
+    (http://wiki.commonjs.org/wiki/Promises/A) API.
+  - `resolve` Single shot function that resolves returned `promise` with a given
+    `value` argument.
+  - `reject` Single shot function that rejects returned `promise` with a given
+    `reason` argument.
+
+  If `this` pseudo-variable is passed, then `this.prototype` is used as a
+  prototype of the returned `promise` allowing one to implement additional API.
+
+  ## Examples
+
+  // Simple usage.
+  var deferred = Promise()
+  deferred.promise.then(console.log, console.error)
+  deferred.resolve(value)
+
+  // Advanced usage
+  function Foo() {
+    // Details...
+  }
+  Foo.prototype.get = function get(name) {
+    return this.then(function(value) {
+      return value[name];
+    })
+  }
+  Foo.defer = Promise
+
+  var foo = Foo.defer()
+  deferred.promise.get('name').then(console.log)
+  deferred.resolve({ name: 'Foo' })
+  //=> 'Foo'
+  **/
+  var pending = [], result
+  var promise = Object.create(this && this.prototype || Promise.prototype, {
+    then: { value: function then(resolve, reject) {
+      var deferred = Promise.call(this.constructor)
+      resolve = resolve || Promise.resolution
+      reject = reject || Promise.rejection
+      function resolved(value) {
+        deferred.resolve(resolve.call(value, value))
+      }
+      function rejected(reason) { deferred.resolve(reject(reason)) }
+      if (pending) pending.push({ resolve: resolved, reject: rejected })
+      else result.then(resolved, rejected)
+
+      return deferred.promise
+    }, enumerable: true }
+  })
+
+  var deferred = Object.create(promise, {
+    promise: { value: promise, enumerable: true },
+    resolve: { value: function resolve(value) {
+      /**
+      Resolves associated `promise` to a given `value`, unless it's already
+      resolved or rejected.
+      **/
+      if (pending) {
+        result = Promise.it(value)
+        pending.forEach(function onEach(observer) {
+          result.then(observer.resolve, observer.reject)
+        })
+        pending = null
+      }
+    }, enumerable: true },
+    reject: { value: function reject(reason) {
+      /**
+      Rejects associated `promise` with a given `reason`, unless it's already
+      resolved or rejected.
+      **/
+      deferred.resolve(Promise.rejection(reason))
+    }, enumerable: true }
+  })
+  return deferred
+}
+Promise.isPromise = function isPromise(value) {
+  /**
+  Returns true if given `value` is promise. Value is assumed to be promise if
+  it implements `then` method.
+  **/
+  return value && typeof(value.then) === 'function'
+}
+Promise.resolution = function resolution(value) {
+  /**
+  Returns promise that resolves to a given `value`.
+  **/
+  return { then: function then(resolve) { resolve.call(value, value) } }
+}
+Promise.rejection = function rejection(reason) {
+  /**
+  Returns promise that rejects with a given `reason`.
+  **/
+  return { then: function then(resolve, reject) { reject(reason) } }
+}
+Promise.it = function it(value) {
+  /**
+  Returns `value` back if it's a promise or returns a promise that resolves to
+  a given `value`.
+  **/
+  return Promise.isPromise(value) ? value : Promise.resolution(value)
+}
+
 exports.Stream = Stream
 function Stream(head, tail) {
-  var stream = Object.create(Stream.prototype)
-  stream.head = head
-  stream.tail = typeof(tail.then) === 'function' ? tail
-                                                 : Stream.lazy(tail, stream)
-  return stream
-}
+  /**
+  Returns stream that has given `head` and `tail`. If `tail` is not a stream
+  then it's assumed to be a function that returns `tail` stream once called.
 
-Stream.lazy = function lazy(next, stream) {
-  return Stream.promise(function(deliver, reject) {
-    next.call(stream || this, stream || this).then(deliver, reject)
+  ## examples
+
+  var one2four = Stream(1, Stream(2, Stream(3, Stream(4))))
+  one2four.print() // <stream 1 2 3 4 />
+
+  // Lazy
+  var ones = Stream(1, function() { return this })
+  ones.take(5).print()    // <stream 1 1 1 1 1 />
+  **/
+  tail = tail || Stream.empty
+  return Promise.isPromise(tail) ? Object.create(Stream.prototype, {
+    head: { enumerable: true, value: head },
+    tail: { enumerable: true, value: tail }
+  }) : Stream.lazy(head, tail)
+}
+Stream.defer = Promise
+Stream.promise = function promise(task, self) {
+  /**
+  Creates a stream promise that will call `task` once it's consumed.
+  Returned stream promise is resolved / rejected with a value that is passed to
+  a `task` callback.
+  @param {Function} task
+      Function is passed `resolve` and `reject` callbacks.
+  @param {Object} [self]
+      Optional argument that will be passed to the `task` as this
+      pseudo-variable.
+
+  ## examples
+
+  var async = Stream.promise(function(resolve, reject) {
+    setTimeout(resolve, 1000, Stream('hello', Stream('world')))
   })
-}
-
-Stream.promise = function Promise(next) {
-  return Object.create(this && this.prototype || Promise.prototype, {
-    then: { value: function then(deliver, reject) {
-      var value, error, forward, propagate, pending = true
-
-      function fulfill(chunck) {
-        // If promise is fulfilled with promise then wait until it's
-        // fulfilled as well.
-        if (chunck && !chunck.tail) return chunck.then(fulfill, fail)
-        pending = false
-        value = deliver ? deliver.call(chunck, chunck) : chunck
-        if (forward) forward(value)
-      }
-
-      function fail(reason) {
-        pending = false
-        if (reject) value = reject(reason)
-        else error = reason
-      }
-
-      next.call(this, fulfill, fail)
-
-      return Promise.call(this, function(deliver, reject) {
-        if (pending) {
-          forward = deliver
-          propagate = reject
-        }
-        else if (deliver && value) deliver(value)
-        else if (reject && error) reject(error)
-      })
+  // will print in 1000ms
+  async.print() // <stream hello world />
+  **/
+  return Object.create(this && this.prototype || Stream.prototype, {
+    then: { value: function then(resolve, reject) {
+      var deferred = this.constructor.defer()
+      task.call(self || this, deferred.resolve, deferred.reject)
+      return deferred.promise.then(resolve, reject)
     }, enumerable: true }
   })
 }
+Stream.lazy = function lazy(head, rest) {
+  /**
+  Creates a stream out of `head` and a given `rest` function that is
+  expected to return stream `tail` once called. This makes it possible to
+  create infinite lazy recursive streams. Function `rest` will be passed
+  a stream it should return tail for as a first argument and `this`
+  pseudo-variable.
 
+  ## Examples
+
+  var ones = Stream.lazy(1, function rest() { return this })
+  **/
+  var stream = Object.create(this.prototype)
+  return Object.defineProperties(stream, {
+    head: { enumerable: true, value: head },
+    tail: { enumerable: true, value: this.promise(function(deliver, reject) {
+      var tail = rest.call(this, this) || Stream.error('Invalid tail: ' + rest)
+      tail.then(deliver, reject)
+    }, stream) }
+  })
+}
 Stream.error = function error(reason) {
   /**
-  Returns a stream with that errors with a given `reason`.
-  **/
-  return Stream.promise(function(deliver, reject) { reject(reason) })
-}
+  Returns a stream that will error with a given `reason`.
 
-Stream.repeat = function repeat(value) {
-  /**
-  Returns a stream of `value`s.
-  **/
-  return Stream(value, function rest() { return this })
-}
 
-Stream.iterate = function iterate(fn, value) {
-  /**
-  Returns a stream of `value, fn(value), fn(fn(value))` etc.
-  `fn` must be free of side-effects.
+  ## Examples
+
+  var boom = Stream.error('Boom!')
+  Stream.of(1, 2, 3).append(boom).print() // <stream 1 2 3 /Boom!>
   **/
-  return Stream(value, function rest() {
-    return Stream.iterate(fn, fn(this.head))
-  })
+  var deferred = this.defer()
+  deferred.reject(reason)
+  return deferred.promise
 }
 /**
   Empty stream. Faster equivalent of `list()`.
@@ -131,11 +249,18 @@ Stream.map = function map(fn) {
   return stream.map(Array.flatten).map(fn)
 }
 
-Stream.prototype.then = function then(deliver) {
-  var value = deliver ? deliver.call(this, this) : this
-  return Stream.promise(function(deliver) {
-    deliver.call(value, value)
-  })
+Stream.prototype.then = function then(resolve, reject) {
+  /**
+  Streams implement [Promises/A](http://wiki.commonjs.org/wiki/Promises/A) API.
+  Given `resolve` callback is passed `this` stream as first argument and `this`
+  pseudo-variable once it's head is accumulated. In case of error reject handler
+  is called with a reason of error. Function returns stream that is resolved
+  with a return value of `resolve(stream)` or `reject(reason)` in case of error.
+  **/
+  var deferred = this.constructor.defer()
+  resolve = resolve || Promise.resolution
+  deferred.resolve(resolve.call(this, this))
+  return deferred.promise
 }
 
 Stream.prototype.alter = function alter(transform, handle) {
