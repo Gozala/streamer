@@ -200,15 +200,18 @@ Stream.error = function error(reason) {
 /**
   Empty stream. Faster equivalent of `list()`.
 **/
-Stream.empty = Stream.promise(function(deliver) { deliver(null) })
-
-Stream.of = function of() {
+Stream.empty = Stream.promise(function(resolve) { resolve(null) })
+Stream.repeat = function repeat(value) {
   /**
-  Creates stream of given elements.
-  @examples
-    Stream.of('a', 2, {})       // => <'a', 2, {}>
+  Returns an infinite stream of a given `value`.
+
+  ## Examples
+
+  var ones = Stream.repeat(1)
+  ones.take(5).print()  // <stream 1 1 1 1 1 />
+  ones.take(11).print() // <stream 1 1 1 1 1 1 1 1 1 1 1 />
   **/
-  return Stream.from(arguments)
+  return this(value, function rest() { return this })
 }
 
 Stream.from = function from(value) {
