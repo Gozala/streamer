@@ -7,55 +7,6 @@
 
 'use strict';
 
-/*
-function signal(observer, error, value) {
-  // If error argument is passed then promise is rejected, otherwise it will
-  // be fulfilled with a given value
-  var handler = error ? observer.reject : observer.deliver
-
-  // If handler is defined then `forwardValue` is a return value of the handler,
-  // otherwise it's a given value.
-  observer.forwardValue = handler ? handler(error || value) : value
-  // If handler is defined then `forwardError` is null (since it was handled
-  // via handler), otherwise it's a given error.
-  observer.forwardError = handler ? null : error
-
-  // If promise forwarder is already defined then forward values.
-  observer.forward && observer.forward(observer.forwardError, observer.forwardValue)
-}
-
-function Promise(run) {
-  var observers = [], pending = true, reason, result
-  return Object.create(this && this.prototype || Promise.prototype, {
-    then: { value: function then(deliver, reject) {
-      var observer = { deliver: deliver, reject: reject, forward: null }
-      // If promise is pending then register observer.
-      if (pending) observers.push(observer)
-      // If promise is already delivered then just signal observer.
-      else signal(observer, reason, result)
-
-      // If promise was not run to completion yet then run it.
-      if (run) run(function(error, value) {
-        run = null
-        pending = false
-        reason = error
-        result = value
-        observers.splice(0).forEach(function(observer) {
-          signal(observer, reason, result)
-        })
-      })
-
-      // Create a new promise that will be resolved with a value returned
-      // by a deliver / reject handlers.
-      return new this.constructor(function(forward) {
-        if (pending) observer.forward = forward
-        else forward(observer.forwardError, observer.forwardValue)
-      })
-    }}
-  })
-}
-*/ 
-
 exports.Stream = Stream
 function Stream(head, tail) {
   var stream = Object.create(Stream.prototype)
