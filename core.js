@@ -437,7 +437,7 @@ Stream.prototype.filter = function filter(f) {
            this.tail.filter(f)
   })
 }
-Stream.prototype.zip = function zip(source1, source2, source3) {
+Stream.prototype.zip = function zip(source) {
   /**
   This function returns stream of tuples, where the n-th tuple contains the
   n-th element from each of the argument streams. The returned stream is
@@ -454,10 +454,15 @@ Stream.prototype.zip = function zip(source1, source2, source3) {
      // [ 'b', 2, '@' ]
      // [ 'c', 3, '#' ]
   **/
-  var sources = Array.prototype.slice.call(arguments)
-  sources.unshift(this)
-  sources.unshift(Array)
-  return Stream.map.apply(sources)
+  return Stream.promise(function() {
+    var self = this.then()
+    return source.then(function(source) {
+      return source && self.then(function() {
+        return this && this.constructor([ this.head, source.head ],
+                                          this.tail.zip(source.tail))
+      })
+    })
+  }, this)
 }
 Stream.prototype.append = function append(source) {
   /**
