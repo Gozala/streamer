@@ -7,48 +7,53 @@
 
 'use strict';
 
-var streamer = require('../core.js'),
-    merge = streamer.merge, list = streamer.list, delay = streamer.delay,
-    append = streamer.append
-var test = require('./utils.js').test
+var Stream = require('../core').Stream
 
-exports['test merge stream of empty streams'] = function(assert, done) {
-  test(assert, done, merge(list(list(), list())), [])
+exports.Assert = require('./assert').Assert
+
+exports['test merge stream of empty streams'] = function(expect, complete) {
+  var actual = Stream.of(Stream.empty, Stream.empty).merge()
+
+  expect(actual).to.be.empty().then(complete)
 }
 
-exports['test merge empty & non-empty'] = function(assert, done) {
-  test(assert, done, merge(list(list(), list(1, 2), list())), [1, 2])
+exports['test merge empty & non-empty'] = function(expect, complete) {
+  var actual = Stream.of(Stream.empty, Stream.of(1, 2), Stream.empty).merge()
+
+  expect(actual).to.be(1, 2).then(complete)
 }
 
-exports['test merge merged'] = function(assert, done) {
-  var stream = merge(list(list(1, 2), list('a', 'b')))
-  stream = merge(list(list('>'), stream, list()))
-  test(assert, done, stream, ['>', 1, 'a', 2, 'b'])
+exports['test merge merged'] = function(expect, complete) {
+  var merged = Stream.of(Stream.of(1, 2), Stream.of('a', 'b')).merge()
+  var actual = Stream.of(Stream.of('>'), merged, Stream.empty).merge()
+
+  expect(actual).to.be('>', 1, 'a', 2, 'b').then(complete)
 }
 
-exports['test merge sync & async streams'] = function(assert, done) {
-  var async = delay(list(3, 2, 1))
-  var actual = merge(list(async, list(), async, list('a', 'b')))
-  test(assert, done, actual, [ 'a', 'b', 3, 3, 2, 2, 1, 1, ])
+exports['test merge sync & async streams'] = function(expect, complete) {
+  var async = Stream.of(3, 2, 1).delay()
+  var actual = Stream.of(async, Stream.empty, async, Stream.of('a', 'b')).merge()
+
+  expect(actual).to.be('a', 'b', 3, 3, 2, 2, 1, 1).then(complete)
 }
 
-exports['test merge with broken stream'] = function(assert, done) {
+exports['test merge with broken stream'] = function(expect, complete) {
   var boom = Error('Boom!!')
-  function broken(next) { next(boom) }
-  var async = delay(append(list(3, 2, 1), broken))
+  var broken = Stream.error(boom)
+  var async = Stream.of(3, 2, 1).append(broken).delay()
+  var actual = Stream.of(Stream.of('>'), async, Stream.of(1, 2), async).merge()
 
-  var stream = merge(list(list('>'), async, list(1, 2), async))
-
-  test(assert, done, stream, [ '>', 1, 2, 3, 3, 2, 2, 1, 1 ], boom)
+  expect(actual).to.have('>', 1, 2, 3, 3, 2, 2, 1).and.error(boom).then(complete)
 }
 
-exports['test merge async stream of streams'] = function(assert, done) {
-  var async = delay(list(3, 2, 1))
-  var actual = merge(append(delay(list(list(), async, list(1, 2), async)),
-                     list(list('a', 'b')), list(list(), list('C', 'D'))))
-  var expected = [ 3, 1, 2, 2, 1, 3, 'a', 'C', 'b', 'D', 2, 1 ]
+exports['test merge async stream of streams'] = function(expect, complete) {
+  var async = Stream.of(3, 2, 1).delay()
+  var first = Stream.of(Stream.empty, async, Stream.of(':a', ':b'), async).delay()
+  var actual = first.append(Stream.of(Stream.of('a', 'b'))).
+                     append(Stream.of(Stream.empty, Stream.of('C', 'D'))).
+                     merge()
 
-  test(assert, done, actual, expected)
+  expect(actual).to.be(3, ':a', ':b', 2, 'a', 'C', 'b', 'D', 1, 3, 2, 1).then(complete)
 }
 
 if (module == require.main)
