@@ -213,7 +213,22 @@ Stream.repeat = function repeat(value) {
   **/
   return this(value, function rest() { return this })
 }
+Stream.iterate = function iterate(fn, value) {
+  /**
+  Returns an infinite stream of `value, fn(value), fn(fn(value)), ....`.
+  (`fn` must be free of side-effects).
 
+
+  ## Examples
+
+  var numbers = Stream.iterate(function(n) { return n + 1 }, 0)
+  numbers.take(5).print()   // <stream 0 1 2 3 4 />
+  numbers.take(15).print()  // <stream 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 />
+  **/
+  return this(value, function rest() {
+    return this.constructor.iterate(fn, fn(this.head))
+  })
+}
 Stream.from = function from(value) {
   /**
   Creates stream from the given array / string.
@@ -221,8 +236,8 @@ Stream.from = function from(value) {
     Stream.from([ 1, 2, 3, 4 ])   // => <1, 2, 3, 4>
     Stream.from('hello')          // => <'h', 'e', 'l', 'l', 'o'>
   **/
-  return !value.length ? Stream.empty : Stream(value[0], function rest() {
-    return Stream.from(Array.prototype.slice.call(value, 1))
+  return !value.length ? this.empty : this(value[0], function rest() {
+    return this.constructor.from(Array.prototype.slice.call(value, 1))
   })
 }
 
@@ -342,8 +357,8 @@ Stream.prototype.take = function take(n) {
   **/
   n = n === undefined ? Infinity : n   // `n` falls back to infinity.
   return n === 0 ? Stream.empty : this.alter(function() {
-    return n - 1 > 0 ? this && Stream(this.head, this.tail.take(n - 1))
-                     : this && Stream(this.head, Stream.empty)
+    return n - 1 > 0 ? this && this.constructor(this.head, this.tail.take(n - 1))
+                     : this && this.constructor(this.head, Stream.empty)
   })
 }
 
@@ -367,7 +382,7 @@ Stream.prototype.drop = function drop(n) {
   })
 }
 
-Stream.prototype.map = function map(fn) {
+Stream.prototype.map = function map(f) {
   /**
   Returns stream of mapped values.
   @param {Function} lambda
@@ -388,11 +403,11 @@ Stream.prototype.map = function map(fn) {
      // 6
   **/
   return this.alter(function() {
-    return this && Stream(fn(this.head), this.tail.map(fn))
+    return this && this.constructor(f(this.head), this.tail.map(f))
   })
 }
 
-Stream.prototype.filter = function filter(fn) {
+Stream.prototype.filter = function filter(f) {
   /**
   Returns stream of filtered values.
   @param {Function} lambda
@@ -410,8 +425,8 @@ Stream.prototype.filter = function filter(fn) {
   **/
   return  this.alter(function() {
     return !this ? this :
-           fn(this.head) ? Stream(this.head, this.tail.filter(fn)) :
-           this.tail.filter(fn)
+           f(this.head) ? this.constructor(this.head, this.tail.filter(f)) :
+           this.tail.filter(f)
   })
 }
 
@@ -453,7 +468,7 @@ Stream.prototype.append = function append(source) {
      // 'b'
   **/
   return this.alter(function() {
-    return this ? Stream(this.head, this.tail.append(source)) : source
+    return this ? this.constructor(this.head, this.tail.append(source)) : source
   })
 }
 
@@ -563,7 +578,7 @@ var twos = ones.map(function(n) {
   return n + 1
 })
 
-Stream.prototype.handle = function handle(fn) {
+Stream.prototype.handle = function handle(handler) {
   /**
   Takes an error `handler` function that is called on error in the given
   source stream. `lambda` will be called with an error value and a sub-stream
@@ -571,7 +586,7 @@ Stream.prototype.handle = function handle(fn) {
   used as tail of the given stream from that point on, otherwise error will
   propagate.
   **/
-  return this.alter(null, fn)
+  return this.alter(null, handler)
 }
 
 Stream.prototype.delay = function delay(ms) {
@@ -580,10 +595,10 @@ Stream.prototype.delay = function delay(ms) {
   element yield is delayed with a given `time` (defaults to 1) in milliseconds.
   **/
   return this.alter(function forward() {
-    var source = this
-    return this && Stream.promise(function(deliver) {
-      setTimeout(deliver, ms || 1, Stream(source.head, source.tail.delay(ms)))
-    })
+    return this && Stream.promise(function(resolve) {
+      setTimeout(resolve, ms || 1,
+                 this.constructor(this.head, this.tail.delay(ms)))
+    }, this)
   })
 }
 
@@ -601,16 +616,16 @@ Stream.prototype.lazy = function lazy() {
   @returns {Function}
      lazy equivalent of the given source.
   **/
-  var source = this, value = this, error = this
+  var value = this, error = this
   return Stream.promise(function forward(deliver, reject) {
-    value !== source ? deliver(value) :
-    error !== source ? reject(error) :
-    source.then(function() {
-      deliver((value = this ? Stream(this.head, this.tail.lazy()) : null))
+    value !== this ? deliver(value) :
+    error !== this ? reject(error) :
+    this.then(function() {
+      deliver((value = this && this.constructor(this.head, this.tail.lazy())))
     }, function(reason) {
       reject((error = reason))
     })
-  })
+  }, this)
 }
 
 Stream.prototype.on = function on(next, stop) {
