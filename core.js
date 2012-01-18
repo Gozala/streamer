@@ -265,20 +265,36 @@ Stream.prototype.then = function then(resolve, reject) {
 
 Stream.prototype.alter = function alter(transform, handle) {
   /**
-  Returns a stream that wraps `this` one and lazily `transform` it every time
-  `then` is called. Function transform is called on each `then` and passes
-  accumulated `head` and `tail` via `this` pseudo variable. Stream returned
-  by the `transform` will fulfill values of the returned stream by this
-  function. In other words result of this function is an equivalent of the
-  stream returned by the `transform` function (Difference is that `alter`
-  returns stream immediately while transform is called on demand).
+  Primary function for composing streams out of `this` stream. This method is
+  pretty much like `then` with a difference that it's lazy. In other words this
+  method returns a stream that wraps `this` one and lazily `transform` it once
+  resulting stream is consumed (`then` is being called on it). Given `transform`
+  is called on each `then` and is passed accumulated stream with a `head` and
+  `tail` properties via first argument and `this` pseudo-variable (If stream is
+  empty `null` is passed instead). Returned stream will resolve to a return
+  value of `transform`. In other words result of this function is an equivalent
+  of the stream returned by the `transform` function (Please not that `alter`
+  returns stream immediately, but `transform` is called only on demand).
+
+  ## Examples
+
+  function power(stream) {
+    "use strict"
+    // In non-strict use `self` argument instead of `this`.
+    return stream.alter(function fn(self) {
+      console.log('!')
+      return this && this.constructor(this.head * this.head, this.tail.alter(fn))
+    })
+  }
+  var powered = power(Stream.of(1, 2, 3))
+  // Notice that there were no `!` logged.
+  powered.take(1).print()     // ! <stream 1 />
+  // Notice that only one `!` logged that's because `fn` is called only once.
   **/
-  var source = this
-  return Stream.promise(function(deliver, reject) {
-    source.then(function(value) {
-      deliver(transform ? transform.call(value, value) : value)
-    }, handle || reject)
-  })
+  return this.constructor.promise(function(resolve, reject) {
+    var promise = this.then(transform, handle)
+    promise.then(resolve, reject)
+  }, this)
 }
 
 Stream.prototype.print = function(fallback) {
