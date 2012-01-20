@@ -596,19 +596,20 @@ Stream.prototype.handle = function handle(handler) {
   **/
   return this.alter(null, handler)
 }
-Stream.prototype.delay = function delay(ms) {
+
+exports.delay = delay
+function delay(ms, stream) {
   /**
   Takes a `source` stream and return stream of it's elements, such that each
   element yield is delayed with a given `time` (defaults to 1) in milliseconds.
   **/
-  return this.alter(function forward() {
-    if (!this) return null
-    var deferred = this.constructor.defer()
-    var result = this.constructor(this.head, this.tail.delay(ms))
-    setTimeout(deferred.resolve, ms || 1, result)
+  return stream ? revise(function(stream) {
+    var deferred = Stream.defer()
+    setTimeout(deferred.resolve, ms, Stream(stream.head, delay(ms, stream.tail)))
     return deferred.promise
-  })
+  }, stream) : delay(1, ms)
 }
+
 Stream.prototype.lazy = function lazy() {
   /**
   Returns a stream equivalent to a given `source`, with a difference that it
