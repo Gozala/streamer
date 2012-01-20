@@ -385,7 +385,8 @@ exports.print = (function(fallback) {
     }, 1)
   }
 }()
-Stream.prototype.take = function take(n) {
+exports.take = take
+function take(n, stream) {
   /**
   Returns stream containing first `n` (or all if has less) elements of `this`
   stream.
@@ -395,16 +396,15 @@ Stream.prototype.take = function take(n) {
   ## Examples
 
   var numbers = Stream.of(10, 23, 2, 7, 17)
-  numbers.take(2).print()           // <stream 10 23 />
-  numbers.take(100).print()         // <stream 10 23 2 7 17 />
-  numbers.take().print()            // <stream 10 23 2 7 17 />
-  numbers.take(0).print()           // <stream />
+  print(take(2, numbers))             // <stream 10 23 />
+  print(take(100, numbers))           // <stream 10 23 2 7 17 />
+  print(take(Infinity, numbers))      // <stream 10 23 2 7 17 />
+  print(take(0, numbers))             // <stream />
   **/
-  n = n === undefined ? Infinity : n   // `n` falls back to infinity.
-  return n === 0 ? Stream.empty : this.alter(function() {
-    return n - 1 > 0 ? this && this.constructor(this.head, this.tail.take(n - 1))
-                     : this && this.constructor(this.head, Stream.empty)
-  })
+  return n <= 0 ? Stream.empty : revise(function(stream) {
+    return Stream(stream.head, take(n - 1, stream.tail))
+  }, stream)
+}
 }
 Stream.prototype.drop = function drop(n) {
   /**
