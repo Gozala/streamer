@@ -290,37 +290,43 @@ Stream.prototype.then = function then(resolve, reject) {
   deferred.resolve(resolve.call(this, this))
   return deferred.promise
 }
-Stream.prototype.alter = function alter(transform, handle) {
+
+exports.alter = alter
+function alter(f, stream) {
   /**
-  Primary function for composing streams out of `this` stream. This method is
-  pretty much like `then` with a difference that it's lazy. In other words this
-  method returns a stream that wraps `this` one and lazily `transform` it once
-  resulting stream is consumed (`then` is being called on it). Given `transform`
-  is called on each `then` and is passed accumulated stream with a `head` and
-  `tail` properties via first argument and `this` pseudo-variable (If stream is
-  empty `null` is passed instead). Returned stream will resolve to a return
-  value of `transform`. In other words result of this function is an equivalent
-  of the stream returned by the `transform` function (Please not that `alter`
-  returns stream immediately, but `transform` is called only on demand).
+  Returns new stream created from the given `stream` by lazily applying given
+  `f` to each element resolution (`[head, tail]` pair or `null` in the end).
+  Each element resolution (including `null` identifying an end) is passed to
+  `f` function that **must** return substitution. Which is either stream or
+  `null` (identifying end). Please not that even though `alter` returns result
+  immediately, `stream` is still altered on demand.
 
   ## Examples
 
-  function power(stream) {
-    "use strict"
-    // In non-strict use `self` argument instead of `this`.
-    return stream.alter(function fn(self) {
+  function power(n, stream) {
+    return alter(function(stream) {
       console.log('!')
-      return this && this.constructor(this.head * this.head, this.tail.alter(fn))
-    })
+      // If not an end substitute head and tail with power of `n`. Otherwise
+      // return an end.
+      return stream && Stream(Math.pow(stream.head, n), power(n, stream.tail))
+    }, stream)
   }
-  var powered = power(Stream.of(1, 2, 3))
-  // Notice that there were no `!` logged.
-  powered.take(1).print()     // ! <stream 1 />
-  // Notice that only one `!` logged that's because `fn` is called only once.
+
+  var powered = power(2, Stream.of(1, 2, 3, 4))
+  // Notice that only one `!` logged. That's because one element is processed.
+  print(take(1, powered))   // ! <stream 1 />
+
+  function append(a, b) {
+    return alter(function(stream) {
+      // If not an end then append `b` to a tail, otherwise substitute `null`
+      // with `b`.
+      return stream ? Stream(stream.head, append(stream.tail, b)) : b
+    }, a)
+  }
+  var ab = append(Stream.of(1, 2, 3), Stream.of(4, 5, 6, 7))
+  print(ab)                 // <stream 1 2 3 4 5 6 7 />
   **/
-  return this.constructor.promise(function() {
-    return this.then(transform, handle)
-  }, this)
+  return Stream.promise(function() { return stream.then(f) })
 }
 Stream.prototype.print = function(fallback) {
   // `print` may be passed a writer function but if not (common case) then it
