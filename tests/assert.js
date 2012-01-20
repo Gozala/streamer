@@ -13,9 +13,7 @@ function runAsserts(assert, assertions) {
   if (!assertions.length) return
   var assertion = assertions.shift()
   var actual = []
-  assertion.actual.on(function next(element) {
-    actual.push(element)
-  }, function stop(error) {
+  function stop(error) {
     var display = JSON.stringify(assertion.expected) || '';
     display = display.length > 60 ? display.substr(0, 60) + '...' : display
     assert.deepEqual(actual, assertion.expected,
@@ -32,7 +30,12 @@ function runAsserts(assert, assertions) {
 
     if (assertion.task) assertion.task()
     setTimeout(runAsserts, 1, assert, assertions)
-  })
+  }
+  assertion.actual.then(function next(stream) {
+    if (!stream) return stop()
+    actual.push(stream.head)
+    stream.tail.then(next, stop)
+  }, stop)
   if (assertion.setup) assertion.setup()
 }
 
