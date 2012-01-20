@@ -329,6 +329,32 @@ function alter(f, stream) {
   return Stream.promise(function() { return stream.then(f) })
 }
 Stream.prototype.print = function(fallback) {
+
+exports.revise = revise
+function revise(f, stream) {
+  /**
+  Returns new revised form of the given `stream` by lazily applying given `f`
+  function to each element resolution except end `null`. This is function is
+  just like alter with only difference that stream end `null` propagates to the
+  resulting stream bypassing `f` (This simplifies `f` interface, since it's
+  guaranteed to be called only with an objects that contain `head` and `tail`
+  properties).
+
+  ## Examples
+
+  function power(n, stream) {
+    return revise(function(stream) {
+      return Stream(Math.pow(stream.head, n), power(n, stream.tail))
+    }, stream)
+  }
+
+  var powered = power(2, Stream.of(1, 2, 3, 4))
+  print(powered)   // ! <stream 1 4 9 16 />
+  **/
+  return alter(function(stream) {
+    return stream ? f(stream) : null
+  }, stream)
+}
   // `print` may be passed a writer function but if not (common case) then it
   // should print with existing facilities. On node use `process.stdout.write`
   // to avoid line breaks that `console.log` uses. If there is no `process`
