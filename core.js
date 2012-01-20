@@ -7,6 +7,12 @@
 
 'use strict';
 
+var slice = Function.prototype.call.bind(Array.prototype.slice)
+function reducer(f) {
+  return function reduced(first) { return slice(arguments, 1).reduce(f, first) }
+}
+exports.reducer = reducer
+
 exports.Promise = Promise
 function Promise() {
   /**
