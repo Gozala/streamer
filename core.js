@@ -328,7 +328,6 @@ function alter(f, stream) {
   **/
   return Stream.promise(function() { return stream.then(f) })
 }
-Stream.prototype.print = function(fallback) {
 
 exports.revise = revise
 function revise(f, stream) {
@@ -355,6 +354,7 @@ function revise(f, stream) {
     return stream ? f(stream) : null
   }, stream)
 }
+exports.print = (function(fallback) {
   // `print` may be passed a writer function but if not (common case) then it
   // should print with existing facilities. On node use `process.stdout.write`
   // to avoid line breaks that `console.log` uses. If there is no `process`
@@ -363,7 +363,7 @@ function revise(f, stream) {
     process.stdout.write(Array.prototype.slice.call(arguments).join(' '))
   } : console.log.bind(console)
 
-  return function print(write, continuation) {
+  return function print(stream, write, continuation) {
     /**
     Utility method for printing streams. Optionally print may be passed a
     `write` function that will be used for writing. If `write` not passed it
@@ -372,16 +372,17 @@ function revise(f, stream) {
     @param {Function} [write]
     **/
     write = write || fallback
-    this.then(function() {
-      setTimeout(function(stream) {
+    setTimeout(function() {
+      stream.then(function(stream) {
         if (!continuation) write('<stream')
         if (!stream) return write(' />')
         write('', stream.head)
-        stream.tail.print(write, true)
-      }, 1, this)
-    }, function(reason) {
-      write('', '/' + reason + '>')
-    })
+        print(stream.tail, write, true)
+      }, function(reason) {
+        if (!continuation) write('<stream')
+        write('', '/' + reason + '>')
+      })
+    }, 1)
   }
 }()
 Stream.prototype.take = function take(n) {
