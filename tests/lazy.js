@@ -93,7 +93,7 @@ exports['test async but lazy'] = function(test, complete) {
   })
 
   test(actual).to.have.elements(1, 2).and.error(boom).and(turn).then(function() {
-    test.assert.ok(!turned, 'read in the same turn')
+    test.assert.ok(turned, 'read in the same turn')
     test.assert.equal(reads, 1, 'tail was cached')
     test.assert.equal(errors, 1, 'error was propagated')
     complete()
