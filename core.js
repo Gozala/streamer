@@ -153,11 +153,11 @@ Stream.promise = function promise(task, self) {
   async.print() // <stream hello world />
   **/
   return Object.create(this && this.prototype || Stream.prototype, {
-    then: { value: function then(resolve, reject) {
+    then: { enumerable: true, value: function then(resolve, reject) {
       var deferred = this.constructor.defer()
-      task.call(self || this, deferred.resolve, deferred.reject)
+      deferred.resolve(Promise.it(task.call(self || this, self || this)))
       return deferred.promise.then(resolve, reject)
-    }, enumerable: true }
+    }}
   })
 }
 Stream.lazy = function lazy(head, rest) {
@@ -175,9 +175,8 @@ Stream.lazy = function lazy(head, rest) {
   var stream = Object.create(this.prototype)
   return Object.defineProperties(stream, {
     head: { enumerable: true, value: head },
-    tail: { enumerable: true, value: this.promise(function(deliver, reject) {
-      var tail = rest.call(this, this) || Stream.error('Invalid tail: ' + rest)
-      tail.then(deliver, reject)
+    tail: { enumerable: true, value: this.promise(function() {
+      return rest.call(this, this) || Stream.error('Invalid tail: ' + rest)
     }, stream) }
   })
 }
@@ -198,7 +197,7 @@ Stream.error = function error(reason) {
 /**
 Empty stream. Empty stream resolves to `null`.
 **/
-Stream.empty = Stream.promise(function(resolve) { resolve(null) })
+Stream.empty = Stream.promise(function() { return null })
 Stream.repeat = function repeat(value) {
   /**
   Returns an infinite stream of a given `value`.
@@ -319,9 +318,8 @@ Stream.prototype.alter = function alter(transform, handle) {
   powered.take(1).print()     // ! <stream 1 />
   // Notice that only one `!` logged that's because `fn` is called only once.
   **/
-  return this.constructor.promise(function(resolve, reject) {
-    var promise = this.then(transform, handle)
-    promise.then(resolve, reject)
+  return this.constructor.promise(function() {
+    return this.then(transform, handle)
   }, this)
 }
 Stream.prototype.print = function(fallback) {
@@ -510,20 +508,20 @@ Stream.prototype.mix = function mix(source) {
   stream.print()   // <stream 1 a 2 b />
   Stream.of(1, 2).delay().mix(Stream.of(3, 4)).print() // <stream 3 4 1 2 />
   **/
-  return Stream.promise(function(resolve, reject) {
+  return Stream.promise(function() {
     var pending = [ this.constructor.defer(), this.constructor.defer() ]
     var first = pending[0].promise
     var last = pending[1].promise
-    var result = first.alter(function() {
+
+    function resolve(value) { pending.shift().resolve(value) }
+    function reject(reason) { pending.shift().reject(reason) }
+
+    this.then(resolve, reject)
+    source.then(resolve, reject)
+
+    return first.alter(function() {
       return this ? this.constructor(this.head, last.mix(this.tail)) : last
     })
-
-    function resolved(value) { pending.shift().resolve(value) }
-    function rejected(reason) { pending.shift().reject(reason) }
-
-    this.then(resolved, rejected)
-    source.then(resolved, rejected)
-    result.then(resolve, reject)
   }, this)
 }
 Stream.prototype.merge = function merge() {
@@ -570,10 +568,11 @@ Stream.prototype.delay = function delay(ms) {
   element yield is delayed with a given `time` (defaults to 1) in milliseconds.
   **/
   return this.alter(function forward() {
-    return this && Stream.promise(function(resolve) {
-      setTimeout(resolve, ms || 1,
-                 this.constructor(this.head, this.tail.delay(ms)))
-    }, this)
+    if (!this) return null
+    var deferred = this.constructor.defer()
+    var result = this.constructor(this.head, this.tail.delay(ms))
+    setTimeout(deferred.resolve, ms || 1, result)
+    return deferred.promise
   })
 }
 Stream.prototype.lazy = function lazy() {
@@ -590,15 +589,11 @@ Stream.prototype.lazy = function lazy() {
   @returns {Function}
      lazy equivalent of the given source.
   **/
-  var value = this, error = this
-  return Stream.promise(function forward(deliver, reject) {
-    value !== this ? deliver(value) :
-    error !== this ? reject(error) :
-    this.then(function() {
-      deliver((value = this && this.constructor(this.head, this.tail.lazy())))
-    }, function(reason) {
-      reject((error = reason))
-    })
+  var value
+  return this.constructor.promise(function() {
+    return value = value || this.alter(function() {
+      return this && this.constructor(this.head, this.tail.lazy())
+    }).then()
   }, this)
 }
 Stream.prototype.on = function on(next, stop) {
