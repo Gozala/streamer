@@ -8,47 +8,48 @@
 'use strict';
 
 
-var Stream = require('../core').Stream
+var streamer = require('../core'), Stream = streamer.Stream,
+    take = streamer.take, delay = streamer.delay, append = streamer.append
 
 exports.Assert = require('./assert').Assert
 
 exports['test take empty'] = function(test, complete) {
-  var actual = Stream.empty.take(100)
+  var actual = take(100, Stream.empty)
   test(actual).to.be.empty().then(complete)
 }
 
 exports['test take more than have'] = function(test, complete) {
   var actual = Stream.of(1, 2, 3)
-  test(actual.take(5)).to.be(1, 2, 3).then(complete)
+  test(take(5, actual)).to.be(1, 2, 3).then(complete)
 }
 
 exports['test take falls back to all'] = function(test, complete) {
   var actual = Stream.of(1, 2, 3)
-  test(actual.take()).to.be(1, 2, 3).then(complete)
+  test(take(Infinity, actual)).to.be(1, 2, 3).then(complete)
 }
 
 exports['test take may be given 0'] = function(test, complete) {
   var actual = Stream.of(1, 2, 3)
-  test(actual.take(0)).to.be.empty().then(complete)
+  test(take(0, actual)).to.be.empty().then(complete)
 }
 
 exports['test take on async stream'] = function(test, complete) {
-  var actual = Stream.of(5, 4, 3, 2, 1).delay()
-  test(actual.take(3)).to.be(5, 4, 3).then(complete)
+  var actual = delay(Stream.of(5, 4, 3, 2, 1))
+  test(take(3, actual)).to.be(5, 4, 3).then(complete)
 }
 
 exports['test take before error'] = function(test, complete) {
   var boom = Error('Boom!')
-  var actual = Stream.of(3, 2, 1).append(Stream.error(boom)).delay()
+  var actual = delay(append(Stream.of(3, 2, 1), Stream.error(boom)))
 
-  test(actual.take(3)).to.be(3, 2, 1).then(complete)
+  test(take(3, actual)).to.be(3, 2, 1).then(complete)
 }
 
 exports['test error on take'] = function(test, complete) {
   var boom = Error('Boom!')
-  var actual = Stream.of(3, 2, 1).append(Stream.error(boom)).delay()
+  var actual = delay(append(Stream.of(3, 2, 1), Stream.error(boom)))
 
-  test(actual.take(5)).to.have.elements(3, 2, 1).and.error(boom).then(complete)
+  test(take(5, actual)).to.have.elements(3, 2, 1).and.error(boom).then(complete)
 }
 
 if (module == require.main)
