@@ -28,7 +28,7 @@ function runAsserts(assert, assertions) {
       assert.ok(!error, 'stream stopped without error')
     }
 
-    if (assertion.task) assertion.task()
+    if (assertion.task) assertion.task(assert)
     setTimeout(runAsserts, 1, assert, assertions)
   }
   assertion.actual.then(function next(stream) {
