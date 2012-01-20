@@ -50,9 +50,7 @@ function Promise() {
       var deferred = Promise.call(this.constructor)
       resolve = resolve || Promise.resolution
       reject = reject || Promise.rejection
-      function resolved(value) {
-        deferred.resolve(resolve.call(value, value))
-      }
+      function resolved(value) { deferred.resolve(resolve.call(value, value)) }
       function rejected(reason) { deferred.resolve(reject(reason)) }
       if (pending) pending.push({ resolve: resolved, reject: rejected })
       else result.then(resolved, rejected)
