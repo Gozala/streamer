@@ -425,7 +425,8 @@ Stream.prototype.drop = function drop(n) {
     return this && n > 0 ? this.tail.drop(n - 1) : this
   })
 }
-Stream.prototype.map = function map(f) {
+exports.map = map
+function map(f, stream) {
   /**
   Returns a stream consisting of the result of applying `f` to the
   elements of `this` stream.
@@ -435,16 +436,16 @@ Stream.prototype.map = function map(f) {
   ## Examples
 
   var objects = Stream.of({ name: 'foo' },  { name: 'bar' })
-  var names = objects.map(function($) { return $.name })
-  names.print()       // <stream foo bar />
+  var names = map(function($) { return $.name }, objects)
+  print(names)       // <stream foo bar />
 
   var numbers = Stream.of(1, 2, 3)
-  var doubles = numbers.map(function onEach(number) { return number * 2 })
-  doubles.print()     // <stream 2 4 6 />
+  var doubles = map(function onEach(number) { return number * 2 }, numbers)
+  print(doubles)     // <stream 2 4 6 />
   **/
-  return this.alter(function() {
-    return this && this.constructor(f(this.head), this.tail.map(f))
-  })
+  return revise(function(stream) {
+    return Stream(f(stream.head), map(f, stream.tail))
+  }, stream)
 }
 Stream.prototype.filter = function filter(f) {
   /**
