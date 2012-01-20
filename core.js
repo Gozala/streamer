@@ -448,7 +448,9 @@ function map(f, stream) {
     return Stream(f(stream.head), map(f, stream.tail))
   }, stream)
 }
-Stream.prototype.filter = function filter(f) {
+
+exports.filter = filter
+function filter(f, stream) {
   /**
   Returns a stream of elements of this stream on which `f` returned `true`.
   @param {Function} f
@@ -456,17 +458,17 @@ Stream.prototype.filter = function filter(f) {
 
   ## Examples
   var numbers = Stream.of(10, 23, 2, 7, 17)
-  var digits = numbers.filter(function(value) {
+  var digits = filter(function(value) {
     return value >= 0 && value <= 9
-  })
-  digits.print()      // <stream 2 7 />
+  }, numbers)
+  print(digits)      // <stream 2 7 />
   **/
-  return  this.alter(function() {
-    return !this ? this :
-           f(this.head) ? this.constructor(this.head, this.tail.filter(f)) :
-           this.tail.filter(f)
-  })
+  return revise(function(stream) {
+    return f(stream.head) ? Stream(stream.head, filter(f, stream.tail))
+                          : filter(f, stream.tail)
+  }, stream)
 }
+
 Stream.prototype.zip = function zip(source) {
   /**
   This function returns stream of tuples, where the n-th tuple contains the
