@@ -15,11 +15,13 @@
     "url": "http://github.com/Gozala/streamer/issues/"
   },
   "devDependencies": {
-    "test": ">=0.2.0"
+    "test": ">=0.4.4",
+    "repl-utils": ">=1.0.0"
   },
   "main": "./core.js",
   "scripts": {
-    "test": "node tests/test-streamer.js"
+    "test": "node tests/test-streamer.js",
+    "repl": "node node_modules/repl-utils"
   },
   "licenses": [{
     "type" : "MIT",
