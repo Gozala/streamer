@@ -31,7 +31,7 @@ function runAsserts(assert, assertions) {
     }
 
     if (assertion.task) assertion.task()
-    runAsserts(assert, assertions)
+    setTimeout(runAsserts, 1, assert, assertions)
   })
   if (assertion.setup) assertion.setup()
 }
