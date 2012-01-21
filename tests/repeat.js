@@ -7,12 +7,15 @@
 
 'use strict';
 
-var Stream = require('../core').Stream
+var streamer = require('../core'), Stream = streamer.Stream,
+    take = streamer.take, repeat = streamer.repeat
 
 exports.Assert = require('./assert').Assert
 exports['test basic repeat'] = function(expect, complete) {
-  var ones = Stream.repeat(1)
-  expect(ones.take(5)).to.be(1, 1, 1, 1, 1).and.then(complete)
+  var actual = repeat(1)
+
+  expect(take(5, actual)).to.be(1, 1, 1, 1, 1)
+  expect(take(8, actual)).to.be(1, 1, 1, 1, 1, 1, 1, 1).then(complete)
 }
 
 if (module == require.main)
