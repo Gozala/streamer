@@ -9,36 +9,56 @@
 
 'use strict';
 
-var Stream = require('../core').Stream
+var streamer = require('../core'), Stream = streamer.Stream,
+    delay = streamer.delay, append = streamer.append, filter = streamer.filter
 
 exports.Assert = require('./assert').Assert
-exports['test filter empty'] = function(test, complete) {
-  var actual = Stream.empty.filter(function onEach(element) {
-    assert.fail('filter function was executed')
+
+exports['test filter empty'] = function(expect, complete) {
+  var called = 0
+  var actual = filter(function onEach(element) {
+    called = called + 1
+  }, Stream.empty)
+
+  expect(actual).to.be.empty().and.then(function(assert) {
+    assert.equal(called, 0, 'filter `f` was not executed')
+    complete()
   })
-  test(actual).to.be.empty().and.then(complete)
 }
 
-exports['test number filter'] = function(test, complete) {
-  var numbers = Stream.of(1, 2, 3, 4)
-  var evens = numbers.filter(function onElement(number) {
-    return !(number % 2)
+exports['test filter numbers'] = function(expect, complete) {
+  var called = 0
+  var actual = filter(function(n) {
+    called = called + 1
+    return n % 2
+  }, Stream.of(1, 2, 3, 4))
+
+  expect(actual).to.be(1, 3).then(function(assert) {
+    assert.equal(called, 4, 'filter `f` was called once per element')
+    complete()
   })
-  test(evens).to.be(2, 4).then(complete)
 }
 
-exports['test filter with async stream'] = function(test, complete) {
-  var stream = Stream.of(5, 4, 3, 2, 1).delay()
-  var odds = stream.filter(function(number) { return number % 2 })
-  test(odds).to.be(5, 3, 1).then(complete)
+exports['test filter async stream'] = function(expect, complete) {
+  var called = 0
+  var actual = filter(function(n) {
+    called = called + 1
+    return n % 2
+  }, delay(Stream.of(5, 4, 3, 2, 1)))
+
+  expect(actual).to.be(5, 3, 1).then(function(assert) {
+    assert.equal(called, 5, 'predicate was called once per element')
+    complete()
+  })
 }
 
-exports['test filter broken stream'] = function(test, complete) {
+exports['test errors propagate'] = function(expect, complete) {
   var boom = Error('Boom!')
-  var stream = Stream.of(3, 2, 1).append(Stream.error(boom)).delay()
-  var actual = stream.filter(function(number) { return number % 2 })
+  var actual = filter(function(n) {
+    return n % 2
+  }, delay(append(Stream.of(3, 2, 1), Stream.error(boom))))
 
-  test(actual).to.have.elements(3, 1).and.error(boom).then(complete)
+  expect(actual).to.have.elements(3, 1).and.error(boom).then(complete)
 }
 
 if (module == require.main)
