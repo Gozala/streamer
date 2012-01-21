@@ -133,8 +133,9 @@ function Stream(head, tail) {
   ones.take(5).print()    // <stream 1 1 1 1 1 />
   **/
   tail = tail || Stream.empty
-  return Promise.isPromise(tail) ? future({ head: head, tail: tail })
-                                 : Stream.lazy(head, tail)
+  var stream = { head: head }
+  stream.tail = Promise.isPromise(tail) ? tail : promise(tail, stream)
+  return future(stream)
 }
 Stream.defer = Promise
 
@@ -146,7 +147,7 @@ function future(value) {
 }
 
 exports.promise = promise
-function promise(task) {
+function promise(task, value) {
   /**
   Creates a stream promise that will call `task` once it's consumed. Returned
   promise is resolved / rejected with a value returned by a `task`.
@@ -165,32 +166,9 @@ function promise(task) {
 
   return {
     then: function then(resolve, reject) {
-      var deferred = Stream.defer()
-      deferred.resolve(task())
-      return deferred.promise.then(resolve, reject)
+      return future(task(value)).then(resolve, reject)
     }
   }
-}
-
-Stream.lazy = function lazy(head, rest) {
-  /**
-  Creates a stream out of `head` and a given `rest` function that is
-  expected to return stream `tail` once called. This makes it possible to
-  create infinite lazy recursive streams. Function `rest` will be passed
-  a stream it should return tail for as a first argument and `this`
-  pseudo-variable.
-
-  ## Examples
-
-  var ones = Stream.lazy(1, function rest() { return this })
-  **/
-  var stream = {
-    head: head,
-    tail: promise(function() {
-      return rest(stream) || Stream.error('Invalid tail: ' + rest)
-    })
-  }
-  return future(stream)
 }
 
 Stream.error = function error(reason) {
