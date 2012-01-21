@@ -27,22 +27,17 @@ exports['test zip 2 lists'] = function(expect, complete) {
   then(complete)
 }
 
-/*
 exports['test zip sync stream with async stream'] = function(expect, complete) {
-  var a = delay(list(5, 4, 3, 2, 1))
-  var b = list('a', 'b', 'c', 'd', 'e')
-  var c = list('~', '@', '!', '#')
+  var actual = zip.all(delay(Stream.of(5, 4, 3, 2, 1)), Stream.from('abcde'),
+                       Stream.from('~@!#'))
 
-  var zipped = zip(a, b, c)
-
-  test(expect, complete, zipped, [
+  expect(actual).to.be(
     [ 5, 'a', '~'  ],
     [ 4, 'b', '@' ],
     [ 3, 'c', '!' ],
     [ 2, 'd', '#' ]
-  ])
+  ).then(complete)
 }
-*/
 
 exports['test zip with late error'] = function(expect, complete) {
   var boom = Error('boom')
