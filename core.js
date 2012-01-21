@@ -250,33 +250,6 @@ Stream.of = function of() {
   **/
   return this.from(arguments)
 }
-/*
-Stream.map = function map(fn) {
-  /**
-  Returns a stream consisting of the result of applying `fn` to the
-  set of first items of each stream, followed by applying `lambda` to the
-  set of second items in each stream, until any one of the streams is
-  exhausted. Any remaining items in other streams are ignored. Function
-  `lambda` should accept number of stream arguments.
-  @examples
-    var s1 = list(1, 2, 3)
-    var s2 = list(3, 4, 5, 6)
-    var sums = map(function(a, b) { a + b }, s1, s2)
-    sums(console.log)
-     // 4
-     // 6
-     // 8
-     // 2
-     // 4
-     // 6
-  ** /
-  var streams = Array.prototype.slice.call(arguments, 1)
-  var stream = streams.reduce(function(stream, source) {
-    stream.zip(source)
-  }, streams.shift())
-  return stream.map(Array.flatten).map(fn)
-}
-*/
 
 exports.capture = exports['catch'] = capture
 function capture(f, stream) {
@@ -703,50 +676,6 @@ Stream.prototype.on = function on(next, stop) {
     else if (false !== next(this.head)) this.tail.on(next, stop)
   }, stop)
 }
-
-function zipmap(lambda) {
-  /**
-  Returns a stream consisting of the result of applying `lambda` to the
-  set of first items of each stream, followed by applying `lambda` to the
-  set of second items in each stream, until any one of the streams is
-  exhausted. Any remaining items in other streams are ignored. Function
-  `lambda` should accept number of stream arguments.
-  @examples
-    var s1 = list(1, 2, 3)
-    var s2 = list(3, 4, 5, 6)
-    var sums = mapmapStreams(function(a, b) { a + b }, s1, s2)
-    sums(console.log)
-     // 4
-     // 6
-     // 8
-     // 2
-     // 4
-     // 6
-  **/
-
-  var sources = Array.prototype.slice.call(arguments, 1)
-  return function steam(next) {
-    var heads = [], tails = [ lambda ], closed, reason,
-    index = -1, length = sources.length, waiting = length
-
-    while (++index < length) {
-      sources[index](function interfere(index, head, tail) {
-        if (!closed) {
-          if (tail) {
-            heads[index] = head
-            tails[index + 1] = tail
-            if (--waiting === 0)
-              next(lambda.apply(null, heads), zipmap.apply(null, tails))
-          } else {
-            closed = true
-            next(reason = head, tail)
-          }
-        }
-      }.bind(null, index))
-    }
-  }
-}
-exports.zipmap = zipmap
 
 function hub(source) {
   /**
