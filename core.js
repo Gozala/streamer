@@ -395,7 +395,7 @@ exports.take = take
 function take(n, stream) {
   /**
   Returns stream containing first `n` (or all if has less) elements of `this`
-  stream.
+  stream. For more generic API see `take.while`.
   @param {Number} n
     Number of elements to take.
 
@@ -411,6 +411,26 @@ function take(n, stream) {
     return Stream(stream.head, take(n - 1, stream.tail))
   }, stream)
 }
+// Note, that we quote 'while` & provide `until` alias since use of keywords
+// like `while` is forbidden in older JS engines.
+take['while'] = take.until = function until(f, stream) {
+  /**
+  Returns stream containing only first `n` items on which given `f` predicate
+  returns `true`. Since older JS engines do not allow keywords as properties,
+  this function is also exposed via `take.until` function.
+
+
+  ## Examples
+
+  var numbers = Stream.iterate(function(n) { return n + 1 }, 0)
+  var digits = take.while(function(n) {
+    return n <= 9
+  }, numbers)
+  print(digits)                 // <stream 0 1 2 3 4 5 6 7 8 9 />
+  **/
+  return revise(function(stream) {
+    return f(stream.head) ? Stream(stream.head, until(f, stream.tail)) : null
+  }, stream)
 }
 
 exports.drop = drop
