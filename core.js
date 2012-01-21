@@ -666,24 +666,6 @@ Stream.prototype.merge = function merge() {
     return this && this.head.mix(this.tail.merge())
   })
 }
-Stream.prototype.handle = function handle(handler) {
-  /**
-  Takes an error `handler` function that is called with an error when it occurs
-  in `this` stream. `handler` is expected to return a stream which will be used
-  from that point on. Please note that `handler` wont automatically handle error
-  that occur in streams returned by it.
-
-
-  ## Examples
-
-  var suspect = Stream.of(1, 2, 3, 4).append(Stream.error('Boom'))
-  var fixed = suspect.handle(function(reason) {
-    return reason === 'Boom' ? Stream(5) : Stream.error(reason)
-  })
-  fixed.print()   // <stream 1 2 3 4 5 />
-  **/
-  return this.alter(null, handler)
-}
 
 exports.delay = delay
 function delay(ms, stream) {
