@@ -452,6 +452,27 @@ function drop(n, stream) {
     return drop(n - 1, stream.tail)
   }, stream)
 }
+// Note, that we quote 'while` & provide `until` alias since use of keywords
+// like `while` is forbidden in older JS engines.
+drop['while'] = drop.until = function until(f, stream) {
+  /**
+  Returns stream containing all except first `n` items on which given `f`
+  predicate returns `true`. Since older JS engines do not allow keywords as
+  properties, this function is also exposed via `drop.until` function.
+
+  ## Examples
+
+  var numbers = Stream.iterate(function(n) { return n + 1 }, -10)
+  var positives = drop.while(function(n) {
+    return n < 0
+  }, numbers)
+  print(take(5, positives))                 // <stream 0 1 2 3 4 />
+  **/
+  return revise(function(stream) {
+    return f(stream.head) ? until(f, stream.tail) : stream
+  }, stream)
+}
+
 exports.map = map
 function map(f, stream) {
   /**
