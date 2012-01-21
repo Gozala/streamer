@@ -567,21 +567,24 @@ function append(first, rest) {
   }, first)
 }
 append.all = reducer(append)
-Stream.prototype.flatten = function flatten() {
+
+exports.flatten = flatten
+function flatten(stream) {
   /**
-  Expects `this` to be a stream of streams and returns stream consisting of
-  elements of each element stream in the same order as they appear there. All
-  errors propagate up to the resulting stream.
+  Takes `stream` of streams and returns stream consisting of items from each
+  stream in the given `stream` in order as they appear there. All errors
+  propagate up to the resulting stream.
 
   ## Examples
 
-  var stream = Stream.of(Stream.of('async').delay(), Stream.of(1, 2)).flatten()
-  stream.print()      // <stream async 1 2 />
+  var stream = flatten(Stream.of(delay(Stream.of('async')), Stream.of(1, 2)))
+  print(stream)      // <stream async 1 2 />
   **/
-  return this.alter(function(stream) {
-    return this && this.head.append(this.tail.flatten())
-  })
+  return revise(function(stream) {
+    return append(stream.head, flatten(stream.tail))
+  }, stream)
 }
+
 Stream.prototype.mix = function mix(source) {
   /**
   Returns a stream consisting of all elements of `this` and `source` stream in
