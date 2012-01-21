@@ -502,21 +502,26 @@ Stream.prototype.zip = function zip(source) {
     })
   }, this)
 }
-Stream.prototype.append = function append(source) {
+
+exports.append = append
+function append(first, rest) {
   /**
-  Returns a stream consisting of elements of `this` stream followed by
-  elements of the given `source` stream. Any errors from `this` or `source`
-  stream propagate to the resulting stream.
+  Returns a stream consisting of all elements of `first` stream followed by
+  all elements of `rest` stream. All errors will propagate to the resulting
+  stream. To append more then two streams use `append.all(first, second, ...)`
+  instead.
 
   ## Examples
 
-  var stream = Stream.of(1, 2).append('a', 'b')
-  stream.print() // <stream 1 2 'a' 'b' />
+  print(append(Stream.of(1, 2), Stream.of('a', 'b')))         // <stream 1 2 a b />
+  print(append.all(Stream.of(1), Stream.of(2), Stream.of(3))) // <stream 1 2 3 />
+
   **/
-  return this.alter(function() {
-    return this ? this.constructor(this.head, this.tail.append(source)) : source
-  })
+  return alter(function(stream) {
+    return stream ? Stream(stream.head, append(stream.tail, rest)) : rest
+  }, first)
 }
+append.all = reducer(append)
 Stream.prototype.flatten = function flatten() {
   /**
   Expects `this` to be a stream of streams and returns stream consisting of
