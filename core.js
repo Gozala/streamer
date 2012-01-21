@@ -549,7 +549,8 @@ function filter(f, stream) {
   }, stream)
 }
 
-Stream.prototype.zip = function zip(source) {
+exports.zip = zip
+function zip(first, second) {
   /**
   This function returns stream of tuples, where the n-th tuple contains the
   n-th element from each of the argument streams. The returned stream is
@@ -567,14 +568,18 @@ Stream.prototype.zip = function zip(source) {
      // [ 'c', 3, '#' ]
   **/
   return Stream.promise(function() {
-    var self = this.then()
-    return source.then(function(source) {
-      return source && self.then(function() {
-        return this && this.constructor([ this.head, source.head ],
-                                          this.tail.zip(source.tail))
-      })
-    })
-  }, this)
+    var future = second.then()
+    return capture(function(reason) {
+      return alter(function(stream) {
+        return stream && Stream.error(reason)
+      }, future)
+    }, revise(function(first) {
+      return first && revise(function(second) {
+        return second && Stream([ first.head, second.head ],
+                                zip(first.tail, second.tail))
+      }, second)
+    }, first))
+  })
 }
 
 exports.append = append
