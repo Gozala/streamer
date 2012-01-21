@@ -390,7 +390,8 @@ exports.print = (function(fallback) {
       })
     }, 1)
   }
-}()
+})()
+
 exports.take = take
 function take(n, stream) {
   /**
