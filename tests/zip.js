@@ -8,18 +8,20 @@
 'use strict';
 
 
-var Stream = require('../core').Stream
+var streamer = require('../core'), Stream = streamer.Stream,
+    take = streamer.take, delay = streamer.delay, append = streamer.append,
+    zip = streamer.zip
 
 exports.Assert = require('./assert').Assert
 
 exports['test zip with empty'] = function(expect, complete) {
-  var actual = Stream.empty.zip(Stream.of(1, 2))
+  var actual = zip(Stream.empty, Stream.of(1, 2))
 
   expect(actual).to.be.empty().then(complete)
 }
 
 exports['test zip 2 lists'] = function(expect, complete) {
-  var actual = Stream.of(1, 2, 3, 4).zip(Stream.of('a', 'b', 'c', 'd'))
+  var actual = zip(Stream.of(1, 2, 3, 4), Stream.of('a', 'b', 'c', 'd'))
 
   expect(actual).to.be([ 1, 'a' ], [ 2, 'b' ], [ 3, 'c' ], [ 4, 'd' ]).
   then(complete)
@@ -44,17 +46,16 @@ exports['test zip sync stream with async stream'] = function(expect, complete) {
 
 exports['test zip with late error'] = function(expect, complete) {
   var boom = Error('boom')
-  var actual = Stream.of(3, 2, 1).append(Stream.error(boom)).delay().
-               zip(Stream.of('a', 'b', 'c'))
+  var actual = zip(delay(append(Stream.of(3, 2, 1), Stream.error(boom))),
+                   Stream.of('a', 'b', 'c'))
 
-  expect(actual).to.have.items([ 3, 'a' ], [ 2, 'b' ], [ 1, 'c' ]).
-                 and.then(complete)
+  expect(actual).to.have([ 3, 'a' ], [ 2, 'b' ], [ 1, 'c' ]).then(complete)
 }
 
 exports['test zip with early error'] = function(expect, complete) {
   var boom = Error('Boom!!')
-  var actual = Stream.of(1, 2, 3).append(Stream.error(boom)).delay().
-               zip(Stream.of('a', 'b', 'c', 'd'))
+  var actual = zip(delay(append(Stream.of(1, 2, 3), Stream.error(boom))),
+                   Stream.of('a', 'b', 'c', 'd'))
 
   expect(actual).to.have.items([ 1, 'a' ], [ 2, 'b' ], [ 3, 'c' ]).
                  and.error(boom).then(complete)
