@@ -133,39 +133,45 @@ function Stream(head, tail) {
   ones.take(5).print()    // <stream 1 1 1 1 1 />
   **/
   tail = tail || Stream.empty
-  return Promise.isPromise(tail) ? Object.create(Stream.prototype, {
-    head: { enumerable: true, value: head },
-    tail: { enumerable: true, value: tail }
-  }) : Stream.lazy(head, tail)
+  return Promise.isPromise(tail) ? future({ head: head, tail: tail })
+                                 : Stream.lazy(head, tail)
 }
 Stream.defer = Promise
-Stream.promise = function promise(task, self) {
+
+exports.future = future
+function future(value) {
+  var deferred = Stream.defer()
+  deferred.resolve(value)
+  return deferred.promise
+}
+
+exports.promise = promise
+function promise(task) {
   /**
-  Creates a stream promise that will call `task` once it's consumed.
-  Returned stream promise is resolved / rejected with a value that is passed to
-  a `task` callback.
-  @param {Function} task
-      Function is passed `resolve` and `reject` callbacks.
-  @param {Object} [self]
-      Optional argument that will be passed to the `task` as this
-      pseudo-variable.
+  Creates a stream promise that will call `task` once it's consumed. Returned
+  promise is resolved / rejected with a value returned by a `task`.
 
   ## examples
 
-  var async = Stream.promise(function(resolve, reject) {
-    setTimeout(resolve, 1000, Stream('hello', Stream('world')))
+  var async = promise(function() {
+    var deferred = defer()
+    setTimeout(deferred.resolve, 1000, Stream.of('hello', 'world'))
+    return deferred.promise
   })
+
   // will print in 1000ms
-  async.print() // <stream hello world />
+  print(async)         // <stream hello world />
   **/
-  return Object.create(this && this.prototype || Stream.prototype, {
-    then: { enumerable: true, value: function then(resolve, reject) {
-      var deferred = this.constructor.defer()
-      deferred.resolve(Promise.it(task.call(self || this, self || this)))
+
+  return {
+    then: function then(resolve, reject) {
+      var deferred = Stream.defer()
+      deferred.resolve(task())
       return deferred.promise.then(resolve, reject)
-    }}
-  })
+    }
+  }
 }
+
 Stream.lazy = function lazy(head, rest) {
   /**
   Creates a stream out of `head` and a given `rest` function that is
@@ -178,14 +184,15 @@ Stream.lazy = function lazy(head, rest) {
 
   var ones = Stream.lazy(1, function rest() { return this })
   **/
-  var stream = Object.create(this.prototype)
-  return Object.defineProperties(stream, {
-    head: { enumerable: true, value: head },
-    tail: { enumerable: true, value: this.promise(function() {
-      return rest.call(this, this) || Stream.error('Invalid tail: ' + rest)
-    }, stream) }
-  })
+  var stream = {
+    head: head,
+    tail: promise(function() {
+      return rest(stream) || Stream.error('Invalid tail: ' + rest)
+    })
+  }
+  return future(stream)
 }
+
 Stream.error = function error(reason) {
   /**
   Returns a stream that will error with a given `reason`.
@@ -196,14 +203,14 @@ Stream.error = function error(reason) {
   var boom = Stream.error('Boom!')
   Stream.of(1, 2, 3).append(boom).print() // <stream 1 2 3 /Boom!>
   **/
-  var deferred = this.defer()
+  var deferred = Stream.defer()
   deferred.reject(reason)
   return deferred.promise
 }
 /**
 Empty stream. Empty stream resolves to `null`.
 **/
-Stream.empty = Stream.promise(function() { return null })
+Stream.empty = future(null)
 
 exports.repeat = repeat
 function repeat(value) {
@@ -220,7 +227,7 @@ function repeat(value) {
 }
 
 exports.iterate = iterate
-function iterate(fn, value) {
+function iterate(f, value) {
   /**
   Returns an infinite stream of `value, fn(value), fn(fn(value)), ....`.
   (`fn` must be free of side-effects).
@@ -233,7 +240,7 @@ function iterate(fn, value) {
   numbers.take(15).print()  // <stream 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 />
   **/
   return Stream(value, function rest(stream) {
-    return iterate(fn, fn(stream.head))
+    return iterate(f, f(stream.head))
   })
 }
 
@@ -246,8 +253,8 @@ Stream.from = function from(value) {
   Stream.from([ 1, 2, 3, 4 ]).print()   // <stream 1 2 3 4 />
   Stream.from('hello').print()          // <stream h e l l o />
   **/
-  return !value.length ? this.empty : this(value[0], function rest() {
-    return this.constructor.from(Array.prototype.slice.call(value, 1))
+  return !value.length ? Stream.empty : Stream(value[0], function rest() {
+    return Stream.from(Array.prototype.slice.call(value, 1))
   })
 }
 Stream.of = function of() {
@@ -288,20 +295,6 @@ Stream.map = function map(fn) {
 }
 */
 
-Stream.prototype.then = function then(resolve, reject) {
-  /**
-  Streams implement [Promises/A](http://wiki.commonjs.org/wiki/Promises/A) API.
-  Given `resolve` callback is passed `this` stream as first argument and `this`
-  pseudo-variable once it's head is accumulated. In case of error reject handler
-  is called with a reason of error. Function returns stream that is resolved
-  with a return value of `resolve(stream)` or `reject(reason)` in case of error.
-  **/
-  var deferred = this.constructor.defer()
-  resolve = resolve || Promise.resolution
-  deferred.resolve(resolve.call(this, this))
-  return deferred.promise
-}
-
 exports.capture = exports['catch'] = capture
 function capture(f, stream) {
   /**
@@ -319,7 +312,7 @@ function capture(f, stream) {
   print(source)                 // <stream 1 2 3 4 -1 />
   **/
 
-  return Stream.promise(function() {
+  return promise(function() {
     return stream.then(function(stream) {
       return stream && Stream(stream.head, capture(f, stream.tail))
     }, f)
@@ -361,7 +354,7 @@ function alter(f, stream) {
   var ab = append(Stream.of(1, 2, 3), Stream.of(4, 5, 6, 7))
   print(ab)                 // <stream 1 2 3 4 5 6 7 />
   **/
-  return Stream.promise(function() { return stream.then(f) })
+  return promise(function() { return stream.then(f) })
 }
 
 exports.revise = revise
@@ -389,6 +382,7 @@ function revise(f, stream) {
     return stream ? f(stream) : null
   }, stream)
 }
+
 exports.print = (function(fallback) {
   // `print` may be passed a writer function but if not (common case) then it
   // should print with existing facilities. On node use `process.stdout.write`
@@ -567,7 +561,7 @@ function zip(first, second) {
      // [ 'b', 2, '@' ]
      // [ 'c', 3, '#' ]
   **/
-  return Stream.promise(function() {
+  return promise(function() {
     var future = second.then()
     return capture(function(reason) {
       return alter(function(stream) {
@@ -638,7 +632,7 @@ function mix(source, rest) {
   print(mix(delay(Stream.of(1, 2)), Stream.of(3, 4)))  // <stream 3 4 1 2 />
   **/
   rest = rest || Stream.empty
-  return Stream.promise(function() {
+  return promise(function() {
     var pending = [ Stream.defer(), Stream.defer() ]
     var first = pending[0].promise
     var last = pending[1].promise
@@ -704,7 +698,7 @@ function lazy(stream) {
   **/
 
   var value
-  return Stream.promise(function() {
+  return promise(function() {
     return value = value || stream.then(function(stream) {
       return stream && Stream(stream.head, lazy(stream.tail))
     })
