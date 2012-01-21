@@ -543,11 +543,9 @@ function zip(first, second) {
   })
 }
 
-zip.all = function all() {
-  return slice(arguments).reduce(function(first, second) {
-    return map(unzip, zip(first, second))
-  }, repeat([]))
-}
+zip.all = reducer(function(first, rest) {
+  return map(unzip, zip(first, rest))
+})
 
 exports.append = append
 function append(first, rest) {
