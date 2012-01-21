@@ -8,8 +8,12 @@
 'use strict';
 
 var call = Function.prototype.call
+var apply = Function.prototype.apply
 // Convenience shortcut for Array.prototype.slice.call(args, n)
 var slice = call.bind(Array.prototype.slice)
+// Convenience shortcut for Array.prototype.concat.apply([], [ [1], [2] ])
+var unzip = apply.bind(Array.prototype.concat, Array.prototype)
+
 function reducer(f) {
   return function reduced(first) { return slice(arguments, 1).reduce(f, first) }
 }
