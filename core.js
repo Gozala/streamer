@@ -204,7 +204,9 @@ Stream.error = function error(reason) {
 Empty stream. Empty stream resolves to `null`.
 **/
 Stream.empty = Stream.promise(function() { return null })
-Stream.repeat = function repeat(value) {
+
+exports.repeat = repeat
+function repeat(value) {
   /**
   Returns an infinite stream of a given `value`.
 
@@ -214,7 +216,7 @@ Stream.repeat = function repeat(value) {
   ones.take(5).print()  // <stream 1 1 1 1 1 />
   ones.take(11).print() // <stream 1 1 1 1 1 1 1 1 1 1 1 />
   **/
-  return this(value, function rest() { return this })
+  return Stream(value, function rest(stream) { return stream })
 }
 Stream.iterate = function iterate(fn, value) {
   /**
