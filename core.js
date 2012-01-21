@@ -458,9 +458,12 @@ function map(f, stream) {
 exports.filter = filter
 function filter(f, stream) {
   /**
-  Returns a stream of elements of this stream on which `f` returned `true`.
+  Returns a stream of items from the given `stream` on which `f` predicate
+  returns `true`.
   @param {Function} f
-    function that filters values
+      predicate function
+  @param {Stream}
+      stream to filter
 
   ## Examples
   var numbers = Stream.of(10, 23, 2, 7, 17)
