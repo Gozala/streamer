@@ -141,6 +141,10 @@ Stream.defer = Promise
 
 exports.future = future
 function future(value) {
+  /**
+  Returned a promise that will be resolved with a given `value`.
+  **/
+
   var deferred = Stream.defer()
   deferred.resolve(value)
   return deferred.promise
@@ -149,8 +153,8 @@ function future(value) {
 exports.promise = promise
 function promise(task, value) {
   /**
-  Creates a stream promise that will call `task` once it's consumed. Returned
-  promise is resolved / rejected with a value returned by a `task`.
+  Returns a promise that will resolve to `task(value)` once `then` method
+  of returned result is called.
 
   ## examples
 
@@ -235,6 +239,7 @@ Stream.from = function from(value) {
     return Stream.from(Array.prototype.slice.call(value, 1))
   })
 }
+
 Stream.of = function of() {
   /**
   Returns stream of given arguments.
