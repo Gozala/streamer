@@ -481,6 +481,11 @@ function map(f, stream) {
     return Stream(f(stream.head), map(f, stream.tail))
   }, stream)
 }
+map.all = function(f) {
+  return map(function(zipped) {
+    return f.apply(null, zipped)
+  }, zip.all.apply(null, slice(arguments, 1)))
+}
 
 exports.filter = filter
 function filter(f, stream) {
