@@ -7,7 +7,9 @@
 
 'use strict';
 
-var slice = Function.prototype.call.bind(Array.prototype.slice)
+var call = Function.prototype.call
+// Convenience shortcut for Array.prototype.slice.call(args, n)
+var slice = call.bind(Array.prototype.slice)
 function reducer(f) {
   return function reduced(first) { return slice(arguments, 1).reduce(f, first) }
 }
