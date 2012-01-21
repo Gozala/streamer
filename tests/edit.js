@@ -9,13 +9,13 @@
 
 
 var streamer = require('../core'),
-    Stream = streamer.Stream, revise = streamer.revise, take = streamer.take
+    Stream = streamer.Stream, edit = streamer.edit, take = streamer.take
 
 exports.Assert = require('./assert').Assert
 
 exports['test revice does nothing on empty'] = function(expect, complete) {
   var calls = 0
-  var actual = revise(function(stream) {
+  var actual = edit(function(stream) {
     calls = calls + 1
     return stream
   }, Stream.empty)
@@ -29,7 +29,7 @@ exports['test revice does nothing on empty'] = function(expect, complete) {
 exports['test substitution is lazy'] = function(expect, complete) {
   var calls = 0, source = Stream.of(1, 2, 3, 4)
   function power(n, stream) {
-    return revise(function(stream) {
+    return edit(function(stream) {
       calls = calls + 1
       // If not an end substitute head and tail with power of `n`. Otherwise
       // return an end.
@@ -50,8 +50,8 @@ exports['test substitution is lazy'] = function(expect, complete) {
 
 exports['test errors propagate'] = function(expect, complete) {
   var boom = Error('boom!'), source = Stream(1, Stream(2, Stream.error(boom)))
-  var actual = revise(function edit(stream) {
-    return stream && Stream(stream.head + 1, revise(edit, stream.tail))
+  var actual = edit(function fn(stream) {
+    return stream && Stream(stream.head + 1, edit(fn, stream.tail))
   }, source)
 
   expect(actual).to.have(2, 3).and.error(boom).then(complete)

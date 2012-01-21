@@ -340,10 +340,10 @@ function alter(f, stream) {
   return promise(function() { return stream.then(f) })
 }
 
-exports.revise = revise
-function revise(f, stream) {
+exports.edit = edit
+function edit(f, stream) {
   /**
-  Returns new revised form of the given `stream` by lazily applying given `f`
+  Returns new edited form of the given `stream` by lazily applying given `f`
   function to each element resolution except end `null`. This is function is
   just like alter with only difference that stream end `null` propagates to the
   resulting stream bypassing `f` (This simplifies `f` interface, since it's
@@ -353,7 +353,7 @@ function revise(f, stream) {
   ## Examples
 
   function power(n, stream) {
-    return revise(function(stream) {
+    return edit(function(stream) {
       return Stream(Math.pow(stream.head, n), power(n, stream.tail))
     }, stream)
   }
@@ -414,7 +414,7 @@ function take(n, stream) {
   print(take(Infinity, numbers))      // <stream 10 23 2 7 17 />
   print(take(0, numbers))             // <stream />
   **/
-  return n <= 0 ? Stream.empty : revise(function(stream) {
+  return n <= 0 ? Stream.empty : edit(function(stream) {
     return Stream(stream.head, take(n - 1, stream.tail))
   }, stream)
 }
@@ -435,7 +435,7 @@ take['while'] = take.until = function until(f, stream) {
   }, numbers)
   print(digits)                 // <stream 0 1 2 3 4 5 6 7 8 9 />
   **/
-  return revise(function(stream) {
+  return edit(function(stream) {
     return f(stream.head) ? Stream(stream.head, until(f, stream.tail)) : null
   }, stream)
 }
@@ -455,7 +455,7 @@ function drop(n, stream) {
   print(drop(100, numbers))       // <stream />
   print(drop(0, numbers))         // <stream 10 23 2 7 17 />
   **/
-  return n <= 0 ? stream : revise(function(stream) {
+  return n <= 0 ? stream : edit(function(stream) {
     return drop(n - 1, stream.tail)
   }, stream)
 }
@@ -475,7 +475,7 @@ drop['while'] = drop.until = function until(f, stream) {
   }, numbers)
   print(take(5, positives))                 // <stream 0 1 2 3 4 />
   **/
-  return revise(function(stream) {
+  return edit(function(stream) {
     return f(stream.head) ? until(f, stream.tail) : stream
   }, stream)
 }
@@ -498,7 +498,7 @@ function map(f, stream) {
   var doubles = map(function onEach(number) { return number * 2 }, numbers)
   print(doubles)     // <stream 2 4 6 />
   **/
-  return revise(function(stream) {
+  return edit(function(stream) {
     return Stream(f(stream.head), map(f, stream.tail))
   }, stream)
 }
@@ -520,7 +520,7 @@ function filter(f, stream) {
   }, numbers)
   print(digits)      // <stream 2 7 />
   **/
-  return revise(function(stream) {
+  return edit(function(stream) {
     return f(stream.head) ? Stream(stream.head, filter(f, stream.tail))
                           : filter(f, stream.tail)
   }, stream)
@@ -550,8 +550,8 @@ function zip(first, second) {
       return alter(function(stream) {
         return stream && Stream.error(reason)
       }, future)
-    }, revise(function(first) {
-      return first && revise(function(second) {
+    }, edit(function(first) {
+      return first && edit(function(second) {
         return second && Stream([ first.head, second.head ],
                                 zip(first.tail, second.tail))
       }, second)
@@ -591,7 +591,7 @@ function flatten(stream) {
   var stream = flatten(Stream.of(delay(Stream.of('async')), Stream.of(1, 2)))
   print(stream)      // <stream async 1 2 />
   **/
-  return revise(function(stream) {
+  return edit(function(stream) {
     return append(stream.head, flatten(stream.tail))
   }, stream)
 }
@@ -650,7 +650,7 @@ function merge(stream) {
   print(stream)    // <stream 1 2 3 async stream />
   **/
 
-  return revise(function(stream) {
+  return edit(function(stream) {
     return mix(stream.head, merge(stream.tail))
   }, stream)
 }
@@ -661,7 +661,7 @@ function delay(ms, stream) {
   Takes a `source` stream and return stream of it's items, such that each
   element yield is delayed with a given `time` (defaults to 1) in milliseconds.
   **/
-  return stream ? revise(function(stream) {
+  return stream ? edit(function(stream) {
     var deferred = Stream.defer()
     setTimeout(deferred.resolve, ms, Stream(stream.head, delay(ms, stream.tail)))
     return deferred.promise
