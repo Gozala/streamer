@@ -218,7 +218,9 @@ function repeat(value) {
   **/
   return Stream(value, function rest(stream) { return stream })
 }
-Stream.iterate = function iterate(fn, value) {
+
+exports.iterate = iterate
+function iterate(fn, value) {
   /**
   Returns an infinite stream of `value, fn(value), fn(fn(value)), ....`.
   (`fn` must be free of side-effects).
@@ -230,10 +232,11 @@ Stream.iterate = function iterate(fn, value) {
   numbers.take(5).print()   // <stream 0 1 2 3 4 />
   numbers.take(15).print()  // <stream 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 />
   **/
-  return this(value, function rest() {
-    return this.constructor.iterate(fn, fn(this.head))
+  return Stream(value, function rest(stream) {
+    return iterate(fn, fn(stream.head))
   })
 }
+
 Stream.from = function from(value) {
   /**
   Creates stream from the given array, string or arguments object.
