@@ -609,40 +609,43 @@ function flatten(stream) {
   }, stream)
 }
 
-Stream.prototype.mix = function mix(source) {
+exports.mix = mix
+function mix(source, rest) {
   /**
-  Returns a stream consisting of all elements of `this` and `source` stream in
+  Returns a stream consisting of all items from `source` and `rest` stream in
   order of their accumulation. This is somewhat parallel version of `append`,
-  since it starts reading both streams simultaneously and yields head that
-  comes first. If streams are synchronous, first come firs serve makes no real
-  sense, in which case, resulting stream contains first elements of both stream,
-  followed by second elements of both streams, etc.. All errors will propagate
-  to the resulting.
-  @param {Stream} source
-      Stream to mix elements of `this` stream with.
+  since it starts reading from both streams simultaneously and yields head that
+  comes in first. If streams are synchronous, first come firs serve makes no
+  real sense, in which case, resulting stream contains first elements of both
+  streams, followed by second elements of both streams, etc.. All errors
+  propagate to the resulting. In order to `mix` more than two streams use
+  `mix.all(a, b, c, ...)` instead.
 
   ## Examples
 
-  var stream = Stream.of(1, 2).mix(Stream.of('a', 'b'))
-  stream.print()   // <stream 1 a 2 b />
-  Stream.of(1, 2).delay().mix(Stream.of(3, 4)).print() // <stream 3 4 1 2 />
+  var stream = mix(Stream.of(1, 2), (Stream.of('a', 'b'))
+  print(stream)   // <stream 1 a 2 b />
+  print(mix(delay(Stream.of(1, 2)), Stream.of(3, 4)))  // <stream 3 4 1 2 />
   **/
+  rest = rest || Stream.empty
   return Stream.promise(function() {
-    var pending = [ this.constructor.defer(), this.constructor.defer() ]
+    var pending = [ Stream.defer(), Stream.defer() ]
     var first = pending[0].promise
     var last = pending[1].promise
 
     function resolve(value) { pending.shift().resolve(value) }
     function reject(reason) { pending.shift().reject(reason) }
 
-    this.then(resolve, reject)
     source.then(resolve, reject)
+    rest.then(resolve, reject)
 
-    return first.alter(function() {
-      return this ? this.constructor(this.head, last.mix(this.tail)) : last
-    })
-  }, this)
+    return alter(function(stream) {
+      return stream ? Stream(stream.head, mix(last, stream.tail)) : last
+    }, first)
+  })
 }
+mix.all = reducer(mix)
+
 Stream.prototype.merge = function merge() {
   /**
   Expects `this` to be a stream of streams and returns stream consisting of
