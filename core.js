@@ -686,27 +686,26 @@ function delay(ms, stream) {
   }, stream) : delay(1, ms)
 }
 
-Stream.prototype.lazy = function lazy() {
+exports.lazy = lazy
+function lazy(stream) {
   /**
-  Returns a stream equivalent to a given `source`, with a difference that it
-  returned stream will cache it's head on first call and will wrap it's tail
-  into lazy as well. While this boost subsequent reads it can have side effect
-  of high memory usage. So it should be used with care for expensive
-  computations (that require network access for example). Wrapping infinite
-  streams with this may not be the best idea, but possible since stream is lazy
-  it will only cache part that was read.
-  @param {Function} source
-     source stream to cache.
-  @returns {Function}
-     lazy equivalent of the given source.
+  Returns an equivalent to a given `stream`, with a difference that returned
+  stream will cache it's items on demand. This will boost subsequent reads,
+  but it may have side effect of high memory usage since all items will be
+  cached into memory. This function is useful for expensive computations (that
+  require network access for example). On the other holding reference to a
+  lazy infinite stream is not a good idea, unless it's never going to be read
+  completely.
   **/
+
   var value
-  return this.constructor.promise(function() {
-    return value = value || this.alter(function() {
-      return this && this.constructor(this.head, this.tail.lazy())
-    }).then()
-  }, this)
+  return Stream.promise(function() {
+    return value = value || stream.then(function(stream) {
+      return stream && Stream(stream.head, lazy(stream.tail))
+    })
+  })
 }
+
 Stream.prototype.on = function on(next, stop) {
   /**
   Function takes a stream and returns function that can register `next` and
