@@ -586,6 +586,7 @@ function append(first, rest) {
   print(append.all(Stream.of(1), Stream.of(2), Stream.of(3))) // <stream 1 2 3 />
 
   **/
+  rest = rest || Stream.empty
   return alter(function(stream) {
     return stream ? Stream(stream.head, append(stream.tail, rest)) : rest
   }, first)
