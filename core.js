@@ -412,7 +412,9 @@ function take(n, stream) {
   }, stream)
 }
 }
-Stream.prototype.drop = function drop(n) {
+
+exports.drop = drop
+function drop(n, stream) {
   /**
   Returns stream of this elements except first `n` ones. Returns empty stream
   has less than `n` elements.
@@ -422,15 +424,13 @@ Stream.prototype.drop = function drop(n) {
   ## Examples
 
   var numbers = Stream.of(10, 23, 2, 7, 17)
-  numbers.drop(3).print()         // <stream 7 17 />
-  numbers.drop(100).print()       // <stream />
-  numbers.drop().print()          // <stream 23 2 7 17 />
-  numbers.drop(0).print()         // <stream 10 23 2 7 17 />
+  print(drop(3, numbers))         // <stream 7 17 />
+  print(drop(100, numbers))       // <stream />
+  print(drop(0, numbers))         // <stream 10 23 2 7 17 />
   **/
-  n = n === undefined ? 1 : n       // `n` falls back to `1`.
-  return this.alter(function() {
-    return this && n > 0 ? this.tail.drop(n - 1) : this
-  })
+  return n <= 0 ? stream : revise(function(stream) {
+    return drop(n - 1, stream.tail)
+  }, stream)
 }
 exports.map = map
 function map(f, stream) {
