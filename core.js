@@ -297,6 +297,30 @@ Stream.prototype.then = function then(resolve, reject) {
   return deferred.promise
 }
 
+exports.capture = exports['catch'] = capture
+function capture(f, stream) {
+  /**
+  Returns new stream created from the given `stream` by lazily handling it's
+  each item until an error occurs, in which case it's passed to given `f`
+  handler that is expected to return a substitution stream containing items
+  from that point on or `null` to stop a stream.
+
+  ## Examples
+
+  var source = capture(function(error) {
+    // Swap error with -1
+    return Stream.of(-1)
+  }, append(Stream.of(1, 2, 3, 4), Stream.error('Boom!')))
+  print(source)                 // <stream 1 2 3 4 -1 />
+  **/
+
+  return Stream.promise(function() {
+    return stream.then(function(stream) {
+      return stream && Stream(stream.head, capture(f, stream.tail))
+    }, f)
+  })
+}
+
 exports.alter = alter
 function alter(f, stream) {
   /**
