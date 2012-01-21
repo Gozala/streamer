@@ -646,25 +646,26 @@ function mix(source, rest) {
 }
 mix.all = reducer(mix)
 
-Stream.prototype.merge = function merge() {
+exports.merge = merge
+function merge(stream) {
   /**
-  Expects `this` to be a stream of streams and returns stream consisting of
-  elements of each element stream in the order of their accumulation. This is
-  somewhat parallel version of `flatten`, since it starts reading from all
-  element streams simultaneously and yields head that comes first. If streams
-  are synchronous, first come first serve makes no real sense, in which case,
-  this is exact equivalent of flatten. All errors will propagate to the
-  resulting stream.
+  Takes `stream` of streams and returns stream consisting of all items of each
+  item stream in the order of their accumulation. This is somewhat parallel
+  version of `flatten`, as it starts reading from all item streams
+  simultaneously and yields head that comes first. If streams are synchronous,
+  first come first serve makes no real sense, in which case, this function
+  will behave as flatten. All errors will propagate to the resulting stream.
 
   ## Examples
 
-  var async = Stream.of('async', 'stream').delay()
+  var async = delay(Stream.of('async', 'stream'))
   var stream = Stream.of(async, Stream.of(1, 2, 3))
-  stream.print()    // <stream 1 2 3 async stream />
+  print(stream)    // <stream 1 2 3 async stream />
   **/
-  return this.alter(function() {
-    return this && this.head.mix(this.tail.merge())
-  })
+
+  return revise(function(stream) {
+    return mix(stream.head, merge(stream.tail))
+  }, stream)
 }
 
 exports.delay = delay
