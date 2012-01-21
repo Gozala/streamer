@@ -577,14 +577,13 @@ function append(first, rest) {
   /**
   Returns a stream consisting of all elements of `first` stream followed by
   all elements of `rest` stream. All errors will propagate to the resulting
-  stream. To append more then two streams use `append.all(first, second, ...)`
+  stream. To append more than two streams use `append.all(first, second, ...)`
   instead.
 
   ## Examples
 
   print(append(Stream.of(1, 2), Stream.of('a', 'b')))         // <stream 1 2 a b />
   print(append.all(Stream.of(1), Stream.of(2), Stream.of(3))) // <stream 1 2 3 />
-
   **/
   rest = rest || Stream.empty
   return alter(function(stream) {
