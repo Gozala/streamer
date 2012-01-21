@@ -12,7 +12,7 @@ var core = require('./core'),
 
 function alter(lambda, source, state) {
   /*
-  Returns altered copy of `source` stream, that has modified elements, size,
+  Returns altered copy of `source` stream, that has modified items, size,
   behavior. Give `lambda` performs modifications depending on the curried
   `state`.
   **/
@@ -135,12 +135,12 @@ exports.pipe = pipe
 
 // Queue
 
-function dequeue(elements, consumers, closed, tail) {
+function dequeue(items, consumers, closed, tail) {
   var readers, element
   if (!dequeue.active) {
     dequeue.active = true
-    if (elements.length) {
-      element = elements.shift()
+    if (items.length) {
+      element = items.shift()
       readers = consumers.splice(0)
       while (readers.length) readers.shift()(element, tail)
     } else if (closed) {
@@ -148,8 +148,8 @@ function dequeue(elements, consumers, closed, tail) {
       while (readers.length) readers.shift()()
     }
     dequeue.active = false
-    if ((elements.length || closed) && consumers.length)
-      dequeue(elements, consumers, closed, tail)
+    if ((items.length || closed) && consumers.length)
+      dequeue(items, consumers, closed, tail)
   }
 }
 
@@ -178,12 +178,12 @@ function queue() {
   **/
 
   var error, closed, consumers = [],
-      elements = Array.prototype.slice.call(arguments)
+      items = Array.prototype.slice.call(arguments)
 
   function stream(next) {
     if (closed) return next(error)
     consumers.push(next)
-    dequeue(elements, consumers, closed, stream)
+    dequeue(items, consumers, closed, stream)
   }
 
   return Object.defineProperties(stream, {
@@ -194,8 +194,8 @@ function queue() {
         // into it. Also we spawn dequeue process to forward all enqueued
         // messages to the consumers.
         closed = closed || arguments.length === 0
-        if (!closed) elements.push.apply(elements, arguments)
-        dequeue(elements, consumers, closed, stream)
+        if (!closed) items.push.apply(items, arguments)
+        dequeue(items, consumers, closed, stream)
       }
     },
     '-close': {
@@ -203,7 +203,7 @@ function queue() {
         // Closes down the stream optionally error reason may be provided.
         error = reason
         closed = true
-        dequeue(elements, consumers, closed, stream)
+        dequeue(items, consumers, closed, stream)
       }
     }
   })
@@ -250,5 +250,19 @@ function fibs() {
   return stream
 }
 exports.fibs = fibs
+
+var ones = Stream(1, function rest() { return this })
+var numbers = Stream(1, function rest() {
+  return this.map(function(n) { n + 1 })
+})
+
+var fibs = function fibs() {
+  return Stream.of(1, 2).append(Stream(function rest() {
+    return this.zip(this.tail()).apply(function(a, b) {
+      return a + b
+    })
+  })).lazy()
+  return stream
+}
 
 });

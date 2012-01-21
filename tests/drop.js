@@ -103,14 +103,14 @@ exports['test drop on stream with error'] = function(expect, complete) {
   var boom = Error('Boom!')
   var actual = drop(2, delay(append(Stream.of(4, 3, 2, 1), Stream.error(boom))))
 
-  expect(actual).to.have.elements(2, 1).and.error(boom).then(complete)
+  expect(actual).to.have.items(2, 1).and.error(boom).then(complete)
 }
 
 exports['test drop on stream with error in head'] = function(expect, complete) {
   var boom = Error('Boom!')
   var actual = drop(2, delay(append(Stream.error(boom), Stream.of(4, 3, 2, 1))))
 
-  expect(actual).to.have.elements().and.error(boom).then(complete)
+  expect(actual).to.have.items().and.error(boom).then(complete)
 }
 
 exports['test error propagation in drop.while'] = function(expect, complete) {

@@ -36,7 +36,7 @@ exports['test map broken stream'] = function(test, complete) {
   var source = append(Stream.of(3, 2, 1), Stream.error(boom))
   var actual = map(function(x) { return x * x }, delay(source))
 
-  test(actual).to.have.elements(9, 4, 1).and.an.error(boom).then(complete)
+  test(actual).to.have.items(9, 4, 1).and.an.error(boom).then(complete)
 }
 
 if (module == require.main)

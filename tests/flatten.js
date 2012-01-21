@@ -44,7 +44,7 @@ exports['test flatten with broken stream'] = function(expect, complete) {
   var async = delay(append(Stream.of(3, 2, 1), Stream.error(boom)))
   var actual = flatten(Stream.of(Stream.of('>'), async, Stream.of(1, 2)))
 
-  expect(actual).to.have.elements('>', 3, 2, 1).and.error(boom).then(complete)
+  expect(actual).to.have.items('>', 3, 2, 1).and.error(boom).then(complete)
 }
 
 exports['test flatten async stream of streams'] = function(expect, complete) {

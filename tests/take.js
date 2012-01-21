@@ -105,7 +105,7 @@ exports['test error propagation'] = function(expect, complete) {
   var boom = Error('Boom!')
   var actual = delay(append(Stream.of(3, 2, 1), Stream.error(boom)))
 
-  expect(take(5, actual)).to.have.elements(3, 2, 1).and.error(boom).then(complete)
+  expect(take(5, actual)).to.have.items(3, 2, 1).and.error(boom).then(complete)
 }
 
 exports['test error propagation in take.while'] = function(expect, complete) {

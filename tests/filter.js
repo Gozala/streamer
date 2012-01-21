@@ -58,7 +58,7 @@ exports['test errors propagate'] = function(expect, complete) {
     return n % 2
   }, delay(append(Stream.of(3, 2, 1), Stream.error(boom))))
 
-  expect(actual).to.have.elements(3, 1).and.error(boom).then(complete)
+  expect(actual).to.have.items(3, 1).and.error(boom).then(complete)
 }
 
 if (module == require.main)

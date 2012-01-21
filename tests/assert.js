@@ -18,7 +18,7 @@ function runAsserts(assert, assertions) {
     display = display.length > 60 ? display.substr(0, 60) + '...' : display
     assert.deepEqual(actual, assertion.expected,
                      !assertion.expected.length ? 'stream is empty' :
-                     'stream has expected elements: ' + display)
+                     'stream has expected items: ' + display)
 
     if (assertion.error) {
       assert.throws(function() {
@@ -70,7 +70,7 @@ var assert = dsl({
   have: function have() {
     this.expected = Array.prototype.slice.call(arguments)
   },
-  elements: function elements() {
+  items: function items() {
     this.expected = Array.prototype.slice.call(arguments)
   },
   expect: function expect(actual) {

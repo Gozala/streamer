@@ -47,7 +47,7 @@ exports['test zip with late error'] = function(expect, complete) {
   var actual = Stream.of(3, 2, 1).append(Stream.error(boom)).delay().
                zip(Stream.of('a', 'b', 'c'))
 
-  expect(actual).to.have.elements([ 3, 'a' ], [ 2, 'b' ], [ 1, 'c' ]).
+  expect(actual).to.have.items([ 3, 'a' ], [ 2, 'b' ], [ 1, 'c' ]).
                  and.then(complete)
 }
 
@@ -56,7 +56,7 @@ exports['test zip with early error'] = function(expect, complete) {
   var actual = Stream.of(1, 2, 3).append(Stream.error(boom)).delay().
                zip(Stream.of('a', 'b', 'c', 'd'))
 
-  expect(actual).to.have.elements([ 1, 'a' ], [ 2, 'b' ], [ 3, 'c' ]).
+  expect(actual).to.have.items([ 1, 'a' ], [ 2, 'b' ], [ 3, 'c' ]).
                  and.error(boom).then(complete)
 }
 

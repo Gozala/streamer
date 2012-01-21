@@ -264,9 +264,9 @@ Stream.of = function of() {
 Stream.map = function map(fn) {
   /**
   Returns a stream consisting of the result of applying `fn` to the
-  set of first elements of each stream, followed by applying `lambda` to the
-  set of second elements in each stream, until any one of the streams is
-  exhausted. Any remaining elements in other streams are ignored. Function
+  set of first items of each stream, followed by applying `lambda` to the
+  set of second items in each stream, until any one of the streams is
+  exhausted. Any remaining items in other streams are ignored. Function
   `lambda` should accept number of stream arguments.
   @examples
     var s1 = list(1, 2, 3)
@@ -424,10 +424,10 @@ exports.print = (function(fallback) {
 exports.take = take
 function take(n, stream) {
   /**
-  Returns stream containing first `n` (or all if has less) elements of `this`
+  Returns stream containing first `n` (or all if has less) items of `this`
   stream. For more generic API see `take.while`.
   @param {Number} n
-    Number of elements to take.
+    Number of items to take.
 
   ## Examples
 
@@ -466,10 +466,10 @@ take['while'] = take.until = function until(f, stream) {
 exports.drop = drop
 function drop(n, stream) {
   /**
-  Returns stream of this elements except first `n` ones. Returns empty stream
-  has less than `n` elements.
+  Returns stream of this items except first `n` ones. Returns empty stream
+  has less than `n` items.
   @param {Number} n
-    Number of elements to drop.
+    Number of items to drop.
 
   ## Examples
 
@@ -507,7 +507,7 @@ exports.map = map
 function map(f, stream) {
   /**
   Returns a stream consisting of the result of applying `f` to the
-  elements of `this` stream.
+  items of `this` stream.
   @param {Function} fn
      function that maps each value
 
@@ -580,8 +580,8 @@ Stream.prototype.zip = function zip(source) {
 exports.append = append
 function append(first, rest) {
   /**
-  Returns a stream consisting of all elements of `first` stream followed by
-  all elements of `rest` stream. All errors will propagate to the resulting
+  Returns a stream consisting of all items of `first` stream followed by
+  all items of `rest` stream. All errors will propagate to the resulting
   stream. To append more than two streams use `append.all(first, second, ...)`
   instead.
 
@@ -621,8 +621,8 @@ function mix(source, rest) {
   order of their accumulation. This is somewhat parallel version of `append`,
   since it starts reading from both streams simultaneously and yields head that
   comes in first. If streams are synchronous, first come firs serve makes no
-  real sense, in which case, resulting stream contains first elements of both
-  streams, followed by second elements of both streams, etc.. All errors
+  real sense, in which case, resulting stream contains first items of both
+  streams, followed by second items of both streams, etc.. All errors
   propagate to the resulting. In order to `mix` more than two streams use
   `mix.all(a, b, c, ...)` instead.
 
@@ -676,7 +676,7 @@ function merge(stream) {
 exports.delay = delay
 function delay(ms, stream) {
   /**
-  Takes a `source` stream and return stream of it's elements, such that each
+  Takes a `source` stream and return stream of it's items, such that each
   element yield is delayed with a given `time` (defaults to 1) in milliseconds.
   **/
   return stream ? revise(function(stream) {
@@ -726,9 +726,9 @@ Stream.prototype.on = function on(next, stop) {
 function zipmap(lambda) {
   /**
   Returns a stream consisting of the result of applying `lambda` to the
-  set of first elements of each stream, followed by applying `lambda` to the
-  set of second elements in each stream, until any one of the streams is
-  exhausted. Any remaining elements in other streams are ignored. Function
+  set of first items of each stream, followed by applying `lambda` to the
+  set of second items in each stream, until any one of the streams is
+  exhausted. Any remaining items in other streams are ignored. Function
   `lambda` should accept number of stream arguments.
   @examples
     var s1 = list(1, 2, 3)
@@ -775,7 +775,7 @@ function hub(source) {
   (http://en.wikipedia.org/wiki/Publish/subscribe) model for streams, useful
   with streams that represent some events (clicks, keypress, etc..)
   @param {Function} source
-     Stream whose elements get published to a subscribers.
+     Stream whose items get published to a subscribers.
   @return {Function}
      Stream whose consumers become subscribers.
   @examples
@@ -825,7 +825,7 @@ function hub(source) {
      </stream>
      </stream>
 
-     // Notice this time second print only printed only following elements.
+     // Notice this time second print only printed only following items.
   **/
   return function stream(next) {
     // Create promise for the head, tail pair of the source stream.

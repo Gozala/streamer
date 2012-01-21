@@ -16,7 +16,7 @@ exports.test = function test(assert, done, stream, expected, reason) {
   }, function stop(error) {
     assert.deepEqual(error, reason, 'stream is stopped as expected')
     assert.deepEqual(actual, expected,
-                     'all elements were yielded in correct order')
+                     'all items were yielded in correct order')
     done()
   })
 }

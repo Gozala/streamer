@@ -53,7 +53,7 @@ exports['test map broken stream'] = function(expect, complete) {
   var async = delay(append(Stream.of(3, 2, 1), Stream.error(boom)))
   var actual = append.all(Stream.of('>'), async, Stream.of(1, 2), async)
 
-  expect(actual).to.have.elements('>', 3, 2, 1).and.error(boom).then(complete)
+  expect(actual).to.have.items('>', 3, 2, 1).and.error(boom).then(complete)
 }
 
 if (module == require.main)
