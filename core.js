@@ -161,7 +161,7 @@ function Stream(head, tail) {
 
   // Lazy
   var ones = Stream(1, function() { return this })
-  ones.take(5).print()    // <stream 1 1 1 1 1 />
+  print(take(5, ones))    // <stream 1 1 1 1 1 />
   **/
   tail = tail || Stream.empty
   var stream = { head: head }
@@ -214,7 +214,7 @@ Stream.error = function error(reason) {
   ## Examples
 
   var boom = Stream.error('Boom!')
-  Stream.of(1, 2, 3).append(boom).print() // <stream 1 2 3 /Boom!>
+  print(append(Stream.of(1, 2, 3), boom)) // <stream 1 2 3 /Boom!>
   **/
   var deferred = Promise.defer()
   deferred.reject(reason)
