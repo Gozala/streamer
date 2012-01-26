@@ -401,6 +401,7 @@ exports.print = (function(fallback) {
     }, 1)
   }
 })()
+exports.print[run.index] = 0
 
 exports.take = take
 function take(n, stream) {
@@ -512,6 +513,7 @@ map.all = function mapall(f) {
     return f.apply(null, zipped)
   }, zip.all.apply(null, slice(arguments, 1)))
 }
+map.all[run.index] = 1
 
 exports.filter = filter
 function filter(f, stream) {
@@ -568,10 +570,12 @@ function zip(first, second) {
     }, first))
   })
 }
+zip[run.index] = 0
 
 zip.all = reducer(function zipall(first, rest) {
   return map(unzip, zip(first, rest))
 })
+zip.all[run.index] = 0
 
 exports.append = append
 function append(first, rest) {
@@ -591,7 +595,10 @@ function append(first, rest) {
     return stream ? Stream(stream.head, append(stream.tail, rest)) : rest
   }, first)
 }
+append[run.index] = 0
+
 append.all = reducer(append)
+append.all[run.index] = 0
 
 exports.flatten = flatten
 function flatten(stream) {
@@ -645,7 +652,10 @@ function mix(source, rest) {
     }, first)
   })
 }
+mix[run.index] = 0
+
 mix.all = reducer(mix)
+mix.all[run.index] = 0
 
 exports.merge = merge
 function merge(stream) {
