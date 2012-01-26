@@ -43,7 +43,6 @@ function pack(f) {
 }
 exports.utils = { reducer: reducer, pack: pack }
 
-exports.Promise = Promise
 var Promise = {
   isPromise: function isPromise(value) {
     /**
@@ -72,6 +71,7 @@ var Promise = {
     return Promise.isPromise(value) ? value : Promise.resolution(value)
   }
 }
+exports.Promise = Promise
 
 exports.defer = defer
 function defer(prototype) {
