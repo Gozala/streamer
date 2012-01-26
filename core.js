@@ -96,6 +96,7 @@ function Promise() {
   })
   return deferred
 }
+Promise.defer = Promise
 Promise.isPromise = function isPromise(value) {
   /**
   Returns true if given `value` is promise. Value is assumed to be promise if
@@ -143,7 +144,6 @@ function Stream(head, tail) {
   stream.tail = Promise.isPromise(tail) ? tail : promise(tail, stream)
   return future(stream)
 }
-Stream.defer = Promise
 
 exports.future = future
 function future(value) {
@@ -151,7 +151,7 @@ function future(value) {
   Returned a promise that will be resolved with a given `value`.
   **/
 
-  var deferred = Stream.defer()
+  var deferred = Promise.defer()
   deferred.resolve(value)
   return deferred.promise
 }
@@ -191,7 +191,7 @@ Stream.error = function error(reason) {
   var boom = Stream.error('Boom!')
   Stream.of(1, 2, 3).append(boom).print() // <stream 1 2 3 /Boom!>
   **/
-  var deferred = Stream.defer()
+  var deferred = Promise.defer()
   deferred.reject(reason)
   return deferred.promise
 }
@@ -604,7 +604,7 @@ function mix(source, rest) {
   **/
   rest = rest || Stream.empty
   return promise(function() {
-    var pending = [ Stream.defer(), Stream.defer() ]
+    var pending = [ Promise.defer(), Promise.defer() ]
     var first = pending[0].promise
     var last = pending[1].promise
 
@@ -650,7 +650,7 @@ function delay(ms, stream) {
   element yield is delayed with a given `time` (defaults to 1) in milliseconds.
   **/
   return stream ? edit(function(stream) {
-    var deferred = Stream.defer()
+    var deferred = Promise.defer()
     setTimeout(deferred.resolve, ms, Stream(stream.head, delay(ms, stream.tail)))
     return deferred.promise
   }, stream) : delay(1, ms)
