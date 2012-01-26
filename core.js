@@ -424,7 +424,7 @@ function take(n, stream) {
 }
 // Note, that we quote 'while` & provide `until` alias since use of keywords
 // like `while` is forbidden in older JS engines.
-take['while'] = take.until = function until(f, stream) {
+take['while'] = take.until = function takewhile(f, stream) {
   /**
   Returns stream containing only first `n` items on which given `f` predicate
   returns `true`. Since older JS engines do not allow keywords as properties,
@@ -440,7 +440,7 @@ take['while'] = take.until = function until(f, stream) {
   print(digits)                 // <stream 0 1 2 3 4 5 6 7 8 9 />
   **/
   return edit(function(stream) {
-    return f(stream.head) ? Stream(stream.head, until(f, stream.tail)) : null
+    return f(stream.head) ? Stream(stream.head, takewhile(f, stream.tail)) : null
   }, stream)
 }
 
@@ -463,9 +463,10 @@ function drop(n, stream) {
     return drop(n - 1, stream.tail)
   }, stream)
 }
+
 // Note, that we quote 'while` & provide `until` alias since use of keywords
 // like `while` is forbidden in older JS engines.
-drop['while'] = drop.until = function until(f, stream) {
+drop['while'] = drop.until = function dropwhile(f, stream) {
   /**
   Returns stream containing all except first `n` items on which given `f`
   predicate returns `true`. Since older JS engines do not allow keywords as
@@ -480,7 +481,7 @@ drop['while'] = drop.until = function until(f, stream) {
   print(take(5, positives))                 // <stream 0 1 2 3 4 />
   **/
   return edit(function(stream) {
-    return f(stream.head) ? until(f, stream.tail) : stream
+    return f(stream.head) ? dropwhile(f, stream.tail) : stream
   }, stream)
 }
 
@@ -506,7 +507,7 @@ function map(f, stream) {
     return Stream(f(stream.head), map(f, stream.tail))
   }, stream)
 }
-map.all = function(f) {
+map.all = function mapall(f) {
   return map(function(zipped) {
     return f.apply(null, zipped)
   }, zip.all.apply(null, slice(arguments, 1)))
@@ -568,7 +569,7 @@ function zip(first, second) {
   })
 }
 
-zip.all = reducer(function(first, rest) {
+zip.all = reducer(function zipall(first, rest) {
   return map(unzip, zip(first, rest))
 })
 
