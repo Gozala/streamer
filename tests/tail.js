@@ -7,38 +7,41 @@
 
 'use strict';
 
-var streamer = require('../core.js'),
-    tail = streamer.tail, list = streamer.list, delay = streamer.delay,
-    append = streamer.append
-var test = require('./utils.js').test
+var streamer = require('../core'), Stream = streamer.Stream,
+    delay = streamer.delay, append = streamer.append, tail = streamer.tail
 
-exports['test tail empty'] = function(assert, done) {
-  var empty = list()
-  test(assert, done, tail(empty), [])
+exports.Assert = require('./assert').Assert
+
+exports['test tail empty'] = function(expect, complete) {
+  var actual = tail(Stream.empty)
+
+  expect(actual).to.be.empty().then(complete)
 }
 
-exports['test tail on sync stream'] = function(assert, done) {
-  var numbers = list(1, 2, 3, 4)
-  test(assert, done, tail(numbers), [ 2, 3, 4 ])
+exports['test tail on sync stream'] = function(expect, complete) {
+  var actual = tail(Stream.of(1, 2, 3, 4))
+
+  expect(actual).to.be(2, 3, 4).then(complete)
 }
 
-exports['test tail of async stream'] = function(assert, done) {
-  var stream = delay(list(5, 4, 3, 2, 1))
-  test(assert, done, tail(stream), [ 4, 3, 2, 1 ])
+exports['test tail of async stream'] = function(expect, complete) {
+  var actual = tail(delay(Stream.of(5, 4, 3, 2, 1)))
+
+  expect(actual).to.be(4, 3, 2, 1).then(complete)
 }
 
-exports['test stream with error in tail'] = function(assert, done) {
-  var error = Error('Boom')
-  var stream = delay(append(list(3, 2, 1), function(next) { next(error) }))
+exports['test stream with error in tail'] = function(expect, complete) {
+  var boom = Error('Boom')
+  var actual = tail(delay(append(Stream.of(3, 2, 1), Stream.error(boom))))
 
-  test(assert, done, tail(stream), [ 2, 1 ], error)
+  expect(actual).to.have.items(2, 1).and.error(boom).then(complete)
 }
 
-exports['test stream with error before tail'] = function(assert, done) {
-  var error = Error('Boom!')
-  var stream = delay(append(function(next) { next(error) }, list(3, 2, 1)))
+exports['test stream with error before tail'] = function(expect, complete) {
+  var boom = Error('Boom!')
+  var actual = tail(delay(append(Stream.error(boom), Stream.of(3, 2, 1))))
 
-  test(assert, done, tail(stream), [], error)
+  expect(actual).to.have.error(boom).then(complete)
 }
 
 if (module == require.main)
