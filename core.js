@@ -202,7 +202,7 @@ function run(task) {
     (print))    // <stream 1 9 />
   **/
   var result, index, then, fab
-  fab = pack(function run(task, params) {
+  fab = pack(function runner(task, params) {
     index = run.index in task ? task[run.index] : params.length
     if (then) params.splice(index, 0, { then: then })
     result = task.apply(null, params)
