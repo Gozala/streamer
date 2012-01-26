@@ -44,7 +44,37 @@ function pack(f) {
 exports.utils = { reducer: reducer, pack: pack }
 
 exports.Promise = Promise
-function Promise() {
+var Promise = {
+  isPromise: function isPromise(value) {
+    /**
+    Returns true if given `value` is promise. Value is assumed to be promise if
+    it implements `then` method.
+    **/
+    return value && typeof(value.then) === 'function'
+  },
+  resolution: function resolution(value) {
+    /**
+    Returns promise that resolves to a given `value`.
+    **/
+    return { then: function then(resolve) { resolve.call(value, value) } }
+  },
+  rejection: function rejection(reason) {
+    /**
+    Returns promise that rejects with a given `reason`.
+    **/
+    return { then: function then(resolve, reject) { reject(reason) } }
+  },
+  it: function it(value) {
+    /**
+    Returns `value` back if it's a promise or returns a promise that resolves to
+    a given `value`.
+    **/
+    return Promise.isPromise(value) ? value : Promise.resolution(value)
+  }
+}
+
+exports.defer = defer
+function defer(prototype) {
   /**
   Returns object containing following properties:
   - `promise` Eventual value representation implementing CommonJS [Promises/A]
@@ -54,36 +84,36 @@ function Promise() {
   - `reject` Single shot function that rejects returned `promise` with a given
     `reason` argument.
 
-  If `this` pseudo-variable is passed, then `this.prototype` is used as a
-  prototype of the returned `promise` allowing one to implement additional API.
+  Given `prototype` argument is used as a prototype of the returned `promise`
+  allowing one to implement additional API.
 
   ## Examples
 
   // Simple usage.
-  var deferred = Promise()
+  var deferred = defer()
   deferred.promise.then(console.log, console.error)
   deferred.resolve(value)
 
   // Advanced usage
-  function Foo() {
-    // Details...
+  var prototye = {
+    get: function get(name) {
+      return this.then(function(value) {
+        return value[name];
+      })
+    }
   }
-  Foo.prototype.get = function get(name) {
-    return this.then(function(value) {
-      return value[name];
-    })
-  }
-  Foo.defer = Promise
 
-  var foo = Foo.defer()
+  var foo = defer(prototype)
   deferred.promise.get('name').then(console.log)
   deferred.resolve({ name: 'Foo' })
   //=> 'Foo'
   **/
   var pending = [], result
-  var promise = Object.create(this && this.prototype || Promise.prototype, {
+  prototype = prototype === undefined ? Object.prototype : prototype
+
+  var promise = Object.create(prototype, {
     then: { value: function then(resolve, reject) {
-      var deferred = Promise.call(this.constructor)
+      var deferred = defer(prototype)
       resolve = resolve || Promise.resolution
       reject = reject || Promise.rejection
       function resolved(value) { deferred.resolve(resolve.call(value, value)) }
@@ -120,54 +150,6 @@ function Promise() {
   })
   return deferred
 }
-Promise.defer = Promise
-Promise.isPromise = function isPromise(value) {
-  /**
-  Returns true if given `value` is promise. Value is assumed to be promise if
-  it implements `then` method.
-  **/
-  return value && typeof(value.then) === 'function'
-}
-Promise.resolution = function resolution(value) {
-  /**
-  Returns promise that resolves to a given `value`.
-  **/
-  return { then: function then(resolve) { resolve.call(value, value) } }
-}
-Promise.rejection = function rejection(reason) {
-  /**
-  Returns promise that rejects with a given `reason`.
-  **/
-  return { then: function then(resolve, reject) { reject(reason) } }
-}
-Promise.it = function it(value) {
-  /**
-  Returns `value` back if it's a promise or returns a promise that resolves to
-  a given `value`.
-  **/
-  return Promise.isPromise(value) ? value : Promise.resolution(value)
-}
-
-exports.Stream = Stream
-function Stream(head, tail) {
-  /**
-  Returns stream that has given `head` and `tail`. If `tail` is not a stream
-  then it's assumed to be a function that returns `tail` stream once called.
-
-  ## examples
-
-  var one2four = Stream(1, Stream(2, Stream(3, Stream(4))))
-  one2four.print() // <stream 1 2 3 4 />
-
-  // Lazy
-  var ones = Stream(1, function() { return this })
-  print(take(5, ones))    // <stream 1 1 1 1 1 />
-  **/
-  tail = tail || Stream.empty
-  var stream = { head: head }
-  stream.tail = Promise.isPromise(tail) ? tail : promise(tail, stream)
-  return future(stream)
-}
 
 exports.future = future
 function future(value) {
@@ -176,7 +158,7 @@ function future(value) {
   for representing `values` via promise API.
   **/
 
-  var deferred = Promise.defer()
+  var deferred = defer()
   deferred.resolve(value)
   return deferred.promise
 }
@@ -206,6 +188,27 @@ function promise(task, value) {
   }
 }
 
+exports.Stream = Stream
+function Stream(head, tail) {
+  /**
+  Returns stream that has given `head` and `tail`. If `tail` is not a stream
+  then it's assumed to be a function that returns `tail` stream once called.
+
+  ## examples
+
+  var one2four = Stream(1, Stream(2, Stream(3, Stream(4))))
+  one2four.print() // <stream 1 2 3 4 />
+
+  // Lazy
+  var ones = Stream(1, function() { return this })
+  print(take(5, ones))    // <stream 1 1 1 1 1 />
+  **/
+  tail = tail || Stream.empty
+  var stream = { head: head }
+  stream.tail = Promise.isPromise(tail) ? tail : promise(tail, stream)
+  return future(stream)
+}
+
 Stream.error = function error(reason) {
   /**
   Returns a stream that will error with a given `reason`.
@@ -216,7 +219,7 @@ Stream.error = function error(reason) {
   var boom = Stream.error('Boom!')
   print(append(Stream.of(1, 2, 3), boom)) // <stream 1 2 3 /Boom!>
   **/
-  var deferred = Promise.defer()
+  var deferred = defer()
   deferred.reject(reason)
   return deferred.promise
 }
@@ -660,7 +663,7 @@ function mix(source, rest) {
   **/
   rest = rest || Stream.empty
   return promise(function() {
-    var pending = [ Promise.defer(), Promise.defer() ]
+    var pending = [ defer(), defer() ]
     var first = pending[0].promise
     var last = pending[1].promise
 
@@ -709,7 +712,7 @@ function delay(ms, stream) {
   element yield is delayed with a given `time` (defaults to 1) in milliseconds.
   **/
   return stream ? edit(function(stream) {
-    var deferred = Promise.defer()
+    var deferred = defer()
     setTimeout(deferred.resolve, ms, Stream(stream.head, delay(ms, stream.tail)))
     return deferred.promise
   }, stream) : delay(1, ms)
