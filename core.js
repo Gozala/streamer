@@ -677,4 +677,18 @@ function lazy(stream) {
   })
 }
 
+exports.each = each
+function each(f, e, stream) {
+  /**
+  Takes `f` and optionally `e` functions and a `stream` as arguments. Calls `f`
+  with each item of the given `stream`. If optional `e` is passed it's called
+  whenever given `stream` reaches it's end or error occurs.
+  **/
+  if (!stream) return each(f, null, e)
+  stream.then(function onEach(stream) {
+    if (!stream) e && e(null)
+    else if (false !== f(stream.head)) each(f, e, stream.tail)
+  }, e)
+}
+
 });
