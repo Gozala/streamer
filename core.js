@@ -148,7 +148,8 @@ function Stream(head, tail) {
 exports.future = future
 function future(value) {
   /**
-  Returned a promise that will be resolved with a given `value`.
+  Returned a promise resolved with a given `value`. This is just a simpler API
+  for representing `values` via promise API.
   **/
 
   var deferred = Promise.defer()
