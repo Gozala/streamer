@@ -19,6 +19,25 @@ function reducer(f) {
 }
 exports.reducer = reducer
 
+function pack(f) {
+  /**
+  Takes `f` function and returns a wrapper function that will pass all the
+  arguments starting from `f.length - 1` via array under last argument.
+
+  ## Examples
+
+  var sum = pack(function(x, rest) {
+    return rest.reduce(function(a, b) { return a + b }, x)
+  })
+  **/
+  var arity = f.length - 1
+  return function packed() {
+    var args = slice(arguments, 0, arity)
+    args[arity] = slice(arguments, arity)
+    return f.apply(this, args)
+  }
+}
+
 exports.Promise = Promise
 function Promise() {
   /**
@@ -690,5 +709,45 @@ function each(f, e, stream) {
     else if (false !== f(stream.head)) each(f, e, stream.tail)
   }, e)
 }
+
+exports.run = run
+function run(task) {
+  /**
+  (fabjs) like API for chaining stream operations into more readable forms.
+
+  ## Examples
+
+  !((run)
+    (Stream.of, 1, 2, 3, 4)
+    (filter, function(x) { return x % 2 })
+    (map, function(x) { return x * x })
+    (print))    // <stream 1 9 />
+  **/
+  var result, index, then, fab
+  fab = pack(function run(task, params) {
+    index = run.index in task ? task[run.index] : params.length
+    if (then) params.splice(index, 0, { then: then })
+    result = task.apply(null, params)
+    fab.then = then = result && result.then
+    return fab
+  })
+  return fab.apply(null, arguments)
+}
+run.on = function runon(stream) {
+  /**
+  API similar to `run` with a difference that first argument passed to it will
+  be used as a target to which all following operations will be performed.
+
+  ## Examples
+
+  !((run.on)
+    (Stream.of(1, 2, 3, 4))
+    (filter, function(x) { return x % 2 })
+    (map, function(x) { return x * x })
+    (print))    // <stream 1 9 />
+  **/
+  return run(function task() { return stream })
+}
+run.index = ':streamer:curry-index'
 
 });
