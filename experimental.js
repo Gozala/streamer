@@ -136,6 +136,29 @@ function queue() {
 }
 exports.queue = queue
 
+exports.attempt = exports['try'] = attempt
+function attempt(catcher, f, stream) {
+  /**
+  Exception handling in streams may be performed by wrapping potential `stream`
+  via `attempt`. It takes optional `catcher` function performing catch clause
+  and required `f` function performing `finally` clause. This way given `stream`
+  may be repaired by substituting error with other stream using `catcher` and
+  some finalization may be done once stream reaches it's end.
+
+
+  ## Examples
+
+  via.open = function withOpen(path, exectue) {
+    return attempt(function() {
+      return fs.closer(path)
+    }, flatten(map(fs.opener(path), exectue)))
+  }
+  **/
+
+  return stream ? finalize(f, capture ? capture(catcher, stream) : stream)
+                : attempt(null, catcher, f)
+}
+
 function enqueue(queue) {
   if (!('-enqueue' in queue)) throw Error('Can not enqueue into non-queue')
   queue['-enqueue'].apply(queue, Array.prototype.slice.call(arguments, 1))
