@@ -677,21 +677,6 @@ function lazy(stream) {
   })
 }
 
-Stream.prototype.on = function on(next, stop) {
-  /**
-  Function takes a stream and returns function that can register `next` and
-  `stop` listeners. `next` listener is called with each element of the given
-  stream or until it returns `false`. `stop` listener is called once `source`
-  stream is exhausted without arguments or with an error arguments error
-  occurs. `stop` listener is optional, it won't be called if `next` will return
-  `false`. Function will basically read stream until it's exhausted or `false`
-  is returned.
-  **/
-  this.then(function() {
-    if (!this) stop && stop()
-    else if (false !== next(this.head)) this.tail.on(next, stop)
-  }, stop)
-}
 
 function hub(source) {
   /**
