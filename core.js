@@ -160,8 +160,8 @@ function future(value) {
 exports.promise = promise
 function promise(task, value) {
   /**
-  Returns a promise that will resolve to `task(value)` once `then` method
-  of returned result is called.
+  Returns an object implementing promise like API that resolves to `task(value)`
+  each time `then` of returned value is called.
 
   ## examples
 
