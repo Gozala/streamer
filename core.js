@@ -279,7 +279,7 @@ Stream.of = function of() {
 
   Stream.of('a', 2, {}) // <stream a 2 [object Object] />
   **/
-  return this.from(arguments)
+  return Stream.from(arguments)
 }
 
 exports.capture = exports['catch'] = capture
