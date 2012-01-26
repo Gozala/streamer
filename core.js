@@ -486,6 +486,17 @@ drop['while'] = drop.until = function dropwhile(f, stream) {
   }, stream)
 }
 
+exports.head = head
+exports.first = head   // alias for people from clojure.
+function head(stream) {
+  /**
+  Returns stream that contains only first item of the given stream.
+  **/
+  return edit(function(stream) {
+    return Stream(stream.head, Stream.empty)
+  }, stream)
+}
+
 exports.tail = tail
 exports.rest = tail   // alias for people from clojure.
 function tail(stream) {
