@@ -209,8 +209,8 @@ function repeat(value) {
   ## Examples
 
   var ones = Stream.repeat(1)
-  ones.take(5).print()  // <stream 1 1 1 1 1 />
-  ones.take(11).print() // <stream 1 1 1 1 1 1 1 1 1 1 1 />
+  print(take(5, ones))  // <stream 1 1 1 1 1 />
+  print(take(11, ones)) // <stream 1 1 1 1 1 1 1 1 1 1 1 />
   **/
   return Stream(value, function rest(stream) { return stream })
 }
@@ -225,8 +225,8 @@ function iterate(f, value) {
   ## Examples
 
   var numbers = Stream.iterate(function(n) { return n + 1 }, 0)
-  numbers.take(5).print()   // <stream 0 1 2 3 4 />
-  numbers.take(15).print()  // <stream 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 />
+  print(take(5, numbers)    // <stream 0 1 2 3 4 />
+  print(take(15, numbers))  // <stream 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 />
   **/
   return Stream(value, function rest(stream) {
     return iterate(f, f(stream.head))
@@ -239,8 +239,8 @@ Stream.from = function from(value) {
 
   ## Examples
 
-  Stream.from([ 1, 2, 3, 4 ]).print()   // <stream 1 2 3 4 />
-  Stream.from('hello').print()          // <stream h e l l o />
+  print(Stream.from([ 1, 2, 3, 4 ]))   // <stream 1 2 3 4 />
+  print(Stream.from('hello'))          // <stream h e l l o />
   **/
   return !value.length ? Stream.empty : Stream(value[0], function rest() {
     return Stream.from(Array.prototype.slice.call(value, 1))
