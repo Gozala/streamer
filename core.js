@@ -22,7 +22,6 @@ function reducer(f) {
   **/
   return function reduced(first) { return slice(arguments, 1).reduce(f, first) }
 }
-exports.reducer = reducer
 
 function pack(f) {
   /**
@@ -42,6 +41,7 @@ function pack(f) {
     return f.apply(this, args)
   }
 }
+exports.utils = { reducer: reducer, pack: pack }
 
 exports.Promise = Promise
 function Promise() {
