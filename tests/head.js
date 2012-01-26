@@ -7,41 +7,42 @@
 
 'use strict';
 
-var streamer = require('../core.js'),
-    head = streamer.head, list = streamer.list, empty = streamer.empty,
-    delay = streamer.delay, append = streamer.append
-var test = require('./utils.js').test
+var streamer = require('../core'), Stream = streamer.Stream,
+    delay = streamer.delay, append = streamer.append, head = streamer.head
 
-exports['test head empty'] = function(assert, done) {
-  test(assert, done, head(empty), [])
+exports.Assert = require('./assert').Assert
+
+exports['test head empty'] = function(expect, complete) {
+  var actual = head(Stream.empty)
+
+  expect(actual).to.be.empty().then(complete)
 }
 
-exports['test head default to 1'] = function(assert, done) {
-  var numbers = list(1, 2, 3, 4)
-  test(assert, done, head(numbers), [1])
+exports['test head default to 1'] = function(expect, complete) {
+  var actual = head(Stream.of(1, 2, 3, 4))
+
+  expect(actual).to.be(1).then(complete)
 }
 
 
-exports['test head of async stream'] = function(assert, done) {
-  var stream = delay(list(5, 4, 3, 3, 1))
-  test(assert, done, head(stream), [ 5 ])
+exports['test head of async stream'] = function(expect, complete) {
+  var actual = head(delay(Stream.of(5, 4, 3, 3, 1)))
+
+  expect(actual).to.be(5).then(complete)
 }
 
-exports['test head before stream error'] = function(assert, done) {
-  var stream = delay(append(list(3, 2), function broken(next) {
-    next(Error('Boom!'))
-  }))
+exports['test head before stream error'] = function(expect, complete) {
+  var boom = Error('Boom!')
+  var actual = head(delay(append(Stream.of(3, 2), Stream.error(boom))))
 
-  test(assert, done, head(stream), [ 3 ])
+  expect(actual).to.have.items(3).then(complete)
 }
 
-exports['test head on broken stream'] = function(assert, done) {
-  var error = Error('Boom!')
-   var stream = delay(function broken(next) {
-    next(error)
-  })
+exports['test head on broken stream'] = function(expect, complete) {
+  var boom = Error('Boom!')
+  var actual = head(delay(append(Stream.error(boom), Stream.of(1, 2, 3))))
 
-  test(assert, done, head(stream), [], error)
+  expect(actual).to.have.error(boom).then(complete)
 }
 
 if (module == require.main)
