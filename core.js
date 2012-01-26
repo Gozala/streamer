@@ -349,6 +349,23 @@ function capture(f, stream) {
   })
 }
 
+exports.finalize = finalize
+function finalize(f, stream) {
+  /**
+  Returns new stream that contains all items at of the given `stream` followed
+  by all items of a stream returned by a `f` function if it returns anything.
+  Alternatively `finalize` may be used to do some cleanup after reading certain
+  stream. Unhandled errors will propagate to the resulting stream preventing
+  `f` from being called.
+  **/
+
+  return promise(function() {
+    return stream.then(function(stream) {
+      return stream ? Stream(stream.head, finalize(f, stream.tail)) : f()
+    }, f)
+  })
+}
+
 exports.alter = alter
 function alter(f, stream) {
   /**
