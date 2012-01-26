@@ -10,80 +10,6 @@
 var core = require('./core'),
     map = core.map, merge = core.merge, list = core.list, append = core.append
 
-function alter(lambda, source, state) {
-  /*
-  Returns altered copy of `source` stream, that has modified items, size,
-  behavior. Give `lambda` performs modifications depending on the curried
-  `state`.
-  **/
-  return function stream(next) {
-    source(function interfere(head, tail) {
-      lambda(head, tail, function forward(head, tail) {
-        next(head, tail ? alter(lambda, tail, state) : tail)
-      }, state)
-    })
-  }
-}
-exports.alter = alter
-
-function future(source) {
-  /**
-  Takes a stream and rushes to pre-cache it, so that for the moment returned
-  stream will be read it's head and tail will be ready. This is useful when
-  reading from multiple streams in parallel. Please note that only one consumer
-  may read from the resulting stream.
-  **/
-
-  var stream = promise()
-  source(function forward(head, tail) { deliver(stream, head, tail )})
-  return stream
-}
-exports.future = future
-
-/*
-function reduce(reducer, source, initial) {
-  /**
-  Returns stream of reduced values
-  @param {Function} source
-     stream to reduce.
-  @param {Function} reducer
-     reducer function
-  @param initial
-     initial value
-  @examples
-     var numbers = list(2, 3, 8)
-     var sum = reduce(function onElement(previous, current) {
-       return (previous || 0) + current
-     }, numbers)
-     sum(console.log)
-     // 13
-  ** /
-
-  return function stream(next, stop) {
-    var value = initial
-    source(function onElement(element) {
-      value = reducer(value, element)
-    }, function onStop(error) {
-      if (error) return stop(error)
-      next(value)
-      if (stop) stop()
-    })
-  }
-}
-exports.reduce = reduce
-*/
-
-function numbers(from, to) {
-  from = from || 0
-  to = to || Infinity
-  return function stream(next) {
-    from < to ? next(from, numbers(from + 1, to)) :
-    from > to ? next(from, numbers(from - 1, to)) :
-           next()
-  }
-}
-exports.numbers = numbers
-
 function tree(isBranch, children, root) {
   /**
   Returns a lazy stream of the nodes in a tree, via a depth-first walk.
@@ -224,45 +150,10 @@ exports.close = close
 
 // Examples
 
-function ones(next) {
-  /**
-  Stream of number ones
-  **/
-  return next(1, ones)
-}
-exports.ones = ones
-
-function numbers(next) {
-  /**
-  Stream of numbers: 1, 2, 3, 4, 5, ....
-  **/
-  next(1, map(function increment(number) { return ++number }, numbers))
-}
-exports.numbers = numbers
-
-function fibs() {
-  /**
-  Returns stream of Fibonacci numbers.
-  **/
-  var stream = lazy(append(list(0, 1), function rest(next) {
-    map(function sum(a, b) { return a + b }, stream, tail(stream))(next)
+function fibs(fibs) {
+  return fibs = lazy(Stream(0, Stream(1, function() {
+    return map.all(function(a, b) { return a + b }, fibs, tail(fibs))
   }))
-  return stream
-}
-exports.fibs = fibs
-
-var ones = Stream(1, function rest() { return this })
-var numbers = Stream(1, function rest() {
-  return this.map(function(n) { n + 1 })
-})
-
-var fibs = function fibs() {
-  return Stream.of(1, 2).append(Stream(function rest() {
-    return this.zip(this.tail()).apply(function(a, b) {
-      return a + b
-    })
-  })).lazy()
-  return stream
 }
 
 });
