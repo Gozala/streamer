@@ -15,6 +15,11 @@ var slice = call.bind(Array.prototype.slice)
 var unzip = apply.bind(Array.prototype.concat, Array.prototype)
 
 function reducer(f) {
+  /**
+  Takes `f` function and returns wrapped one instead that reduces arguments
+  to it via `f`. For example `reducer(f)(a, b, c, d)` is equivalent of
+  `f(a, f(b, f(c, d)))`.
+  **/
   return function reduced(first) { return slice(arguments, 1).reduce(f, first) }
 }
 exports.reducer = reducer
