@@ -426,7 +426,7 @@ function edit(f, stream) {
   print(powered)   // ! <stream 1 4 9 16 />
   **/
   return alter(function(stream) {
-    return stream ? f(stream) : null
+    return stream && f(stream)
   }, stream)
 }
 
