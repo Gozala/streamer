@@ -27,6 +27,7 @@ exports['test flatten'] = require('./flatten')
 exports['test mix'] = require('./mix')
 exports['test merge'] = require('./merge')
 exports['test lazy'] = require('./lazy')
+exports['test reduce'] = require('./reduce')
 exports['test run'] = require('./run')
 
 if (module == require.main)
