@@ -173,10 +173,10 @@ exports.close = close
 
 // Examples
 
-function fibs(fibs) {
-  return fibs = lazy(Stream(0, Stream(1, function() {
+exports.fibs = function(fibs) {
+  return (fibs = Stream(0, Stream(1, function rest() {
     return map.all(function(a, b) { return a + b }, fibs, tail(fibs))
-  }))
+  })))
 }
 
 });
