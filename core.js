@@ -131,7 +131,7 @@ function defer(prototype) {
 
       // If promise is pending register listeners. Otherwise forward them to
       // resulting resolution.
-      if (pending) pending.push({ resolve: resolved, reject: rejected })
+      if (pending) pending.push([ resolved, rejected ])
       else result.then(resolved, rejected)
 
       return deferred.promise
@@ -152,9 +152,7 @@ function defer(prototype) {
         // a promise.
         result = isPromise(value) ? value : resolution(value)
         // forward all pending observers.
-        pending.forEach(function onEach(observer) {
-          result.then(observer.resolve, observer.reject)
-        })
+        while (pending.length) result.then.apply(result, pending.shift())
         // mark promise as resolved.
         pending = null
       }
