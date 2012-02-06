@@ -634,6 +634,18 @@ function filter(f, stream) {
 
 exports.reduce = reduce
 function reduce(f, stream, initial) {
+  /**
+  returns stream containing result of applying `f` to the `initial`
+  and first item of stream, then applying `f` to that result and the
+  2nd item, etc.. If stream has no items then stream containing
+  `initial` is retuned.
+
+  ## Examples
+
+  var sum = reduce(function(x, y) {
+    return x + y
+  }, Stream.of(1, 2, 3), 0) // <stream 6 />
+  **/
   return future.lazy(function(result) {
     var deferred = defer()
     function accumulate(stream) {
