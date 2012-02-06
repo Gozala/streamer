@@ -621,6 +621,21 @@ function filter(f, stream) {
   }, stream)
 }
 
+exports.reduce = reduce
+function reduce(f, stream, initial) {
+  return promise(function(result) {
+    var deferred = defer()
+    function accumulate(stream) {
+      if (!stream) return deferred.resolve(Stream.of(result))
+      result = f(result, stream.head)
+      stream.tail.then(accumulate, deferred.reject)
+    }
+    stream.then(accumulate, deferred.reject)
+    return deferred.promise
+  }, initial)
+}
+reduce[run.index] = 1
+
 exports.zip = zip
 function zip(first, second) {
   /**
