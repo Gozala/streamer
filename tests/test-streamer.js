@@ -8,11 +8,11 @@
 'use strict';
 
 exports['test make'] = require('./make')
+exports['test delay'] = require('./delay')
 exports['test iterate'] = require('./iterate')
 exports['test repeat'] = require('./repeat')
 exports['test capture'] = require('./capture')
 exports['test finalize'] = require('./finalize')
-// exports['test attempt'] = require('./attempt') experimental
 exports['test alter'] = require('./alter')
 exports['test edit'] = require('./edit')
 exports['test take'] = require('./take')
