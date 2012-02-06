@@ -40,7 +40,7 @@ exports['test capture error every time'] = function(expect, complete) {
   })
 
   expect(actual).to.be.empty().then(function(assert) {
-    assert.equal(calls, 2, 'error captured on each read')
+    assert.equal(reason, boom, 'captured raised error')
     complete()
   })
 }

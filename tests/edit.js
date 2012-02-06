@@ -43,7 +43,7 @@ exports['test substitution is lazy'] = function(expect, complete) {
     calls = 0
   })
   expect(actual).to.be(1, 4, 9, 16).then(function(assert) {
-    assert.equal(calls, 4, 'alter is called on every element except end')
+    assert.equal(calls, 3, 'alter is called on every element except end')
     complete()
   })
 }

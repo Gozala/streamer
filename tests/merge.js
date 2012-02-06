@@ -52,7 +52,7 @@ exports['test merge async stream of streams'] = function(expect, complete) {
   var actual = merge(append.all(first, Stream.of(Stream.of('a', 'b')), 
                      Stream.of(Stream.empty, Stream.of('C', 'D'))))
 
-  expect(actual).to.be(3, ':a', ':b', 2, 'a', 'C', 'b', 'D', 1, 3, 2, 1).then(complete)
+  expect(actual).to.be(3, ':a', ':b', 2, 3, 'a', 2, 'C', 'b', 'D', 1, 1).then(complete)
 }
 
 if (module == require.main)

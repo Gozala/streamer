@@ -28,7 +28,7 @@ exports['test substitution on empty'] = function(expect, complete) {
   })
 }
 
-exports['test alters on each read'] = function(expect, complete) {
+exports['test alters is lazy'] = function(expect, complete) {
   var calls = 0
   var actual = alter(function(stream) {
     calls = calls + 1
@@ -39,7 +39,7 @@ exports['test alters on each read'] = function(expect, complete) {
     assert.equal(calls, 1, 'stream was altered once')
   })
   expect(actual).to.be.empty().then(function(assert) {
-    assert.equal(calls, 2, 'stream was altered once again')
+    assert.equal(calls, 1, 'stream is altered once')
     complete()
   })
 }
@@ -61,7 +61,7 @@ exports['test substitution is lazy'] = function(expect, complete) {
     calls = 0
   })
   expect(actual).to.be(1, 4, 9, 16).then(function(assert) {
-    assert.equal(calls, 5, 'alter is called on end as well')
+    assert.equal(calls, 4, 'alter is called on end as well')
     complete()
   })
 }

@@ -192,7 +192,7 @@ function future(task, options) { return promise(options).then(task) }
 future.lazy = function lazyfuture(task, options) {
   var result
   return { then: function then(resolve, reject) {
-    result = future(task, options)
+    result = result || future(task, options)
     return result.then(resolve, reject)
   }}
 }
