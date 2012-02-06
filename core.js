@@ -43,37 +43,40 @@ function pack(f) {
 }
 exports.utils = { reducer: reducer, pack: pack }
 
-var Promise = {
-  isPromise: function isPromise(value) {
-    /**
-    Returns true if given `value` is promise. Value is assumed to be promise if
-    it implements `then` method.
-    **/
-    return value && typeof(value.then) === 'function'
-  },
-  resolution: function resolution(value) {
-    /**
-    Returns promise that resolves to a given `value`.
-    **/
-    return { then: function then(resolve) { resolve.call(value, value) } }
-  },
-  rejection: function rejection(reason) {
-    /**
-    Returns promise that rejects with a given `reason`.
-    **/
-    return { then: function then(resolve, reject) { reject(reason) } }
-  },
-  it: function it(value) {
-    /**
-    Returns `value` back if it's a promise or returns a promise that resolves to
-    a given `value`.
-    **/
-    return Promise.isPromise(value) ? value : Promise.resolution(value)
+/**
+ * Returns promise that resolves to a given `value`.
+ */
+function resolution(value) {
+  return { then: function then(resolve) { resolve(value) } }
+}
+
+/**
+ * Returns promise that rejects with a given `reason`.
+ */
+function rejection(reason) {
+  return { then: function then(resolve, reject) { reject(reason) } }
+}
+
+/**
+ * Returns function that delegates to `f`. If `f` throws then captures
+ * error and returns promise that rejects with a thrown error.
+ */
+function attempt(f) {
+  return function attempt(options) {
+    try { return f(options) }
+    catch(error) { return rejection(error) }
   }
 }
-exports.Promise = Promise
 
-exports.defer = defer
+/**
+ * Returns true if given `value` is promise. Value is assumed to be promise if
+ * it implements `then` method.
+ */
+function isPromise(value) {
+  return value && typeof(value.then) === 'function'
+}
+
+
 function defer(prototype) {
   /**
   Returns object containing following properties:
@@ -85,7 +88,8 @@ function defer(prototype) {
     `reason` argument.
 
   Given `prototype` argument is used as a prototype of the returned `promise`
-  allowing one to implement additional API.
+  allowing one to implement additional API. If prototype is not passed then
+  it falls back to `Object.prototype`.
 
   ## Examples
 
@@ -95,7 +99,7 @@ function defer(prototype) {
   deferred.resolve(value)
 
   // Advanced usage
-  var prototye = {
+  var prototype = {
     get: function get(name) {
       return this.then(function(value) {
         return value[name];
@@ -107,86 +111,95 @@ function defer(prototype) {
   deferred.promise.get('name').then(console.log)
   deferred.resolve({ name: 'Foo' })
   //=> 'Foo'
-  **/
+  */
   var pending = [], result
   prototype = prototype === undefined ? Object.prototype : prototype
 
+  // Create an object implementing promise API.
   var promise = Object.create(prototype, {
     then: { value: function then(resolve, reject) {
+      // create a new deferred using a same `prototype`.
       var deferred = defer(prototype)
-      resolve = resolve || Promise.resolution
-      reject = reject || Promise.rejection
-      function resolved(value) { deferred.resolve(resolve.call(value, value)) }
+      // If `resolve / reject` callbacks are not provided.
+      resolve = resolve ? attempt(resolve) : resolution
+      reject = reject ? attempt(reject) : rejection
+
+      // Create a listeners for a enclosed promise resolution / rejection that
+      // delegate to an actual callbacks and resolve / reject returned promise.
+      function resolved(value) { deferred.resolve(resolve(value)) }
       function rejected(reason) { deferred.resolve(reject(reason)) }
+
+      // If promise is pending register listeners. Otherwise forward them to
+      // resulting resolution.
       if (pending) pending.push({ resolve: resolved, reject: rejected })
       else result.then(resolved, rejected)
 
       return deferred.promise
-    }, enumerable: true }
+    }}
   })
 
-  var deferred = Object.create(promise, {
-    promise: { value: promise, enumerable: true },
-    resolve: { value: function resolve(value) {
-      /**
-      Resolves associated `promise` to a given `value`, unless it's already
-      resolved or rejected.
-      **/
+  var deferred = {
+    promise: promise,
+    /**
+     * Resolves associated `promise` to a given `value`, unless it's already
+     * resolved or rejected.
+     */
+    resolve: function resolve(value) {
       if (pending) {
-        result = Promise.it(value)
+        // store resolution `value` as a promise (`value` itself may be a
+        // promise), so that all subsequent listeners can be forwarded to it,
+        // which either resolves immediately or forwards if `value` is
+        // a promise.
+        result = isPromise(value) ? value : resolution(value)
+        // forward all pending observers.
         pending.forEach(function onEach(observer) {
           result.then(observer.resolve, observer.reject)
         })
+        // mark promise as resolved.
         pending = null
       }
-    }, enumerable: true },
-    reject: { value: function reject(reason) {
-      /**
-      Rejects associated `promise` with a given `reason`, unless it's already
-      resolved or rejected.
-      **/
-      deferred.resolve(Promise.rejection(reason))
-    }, enumerable: true }
-  })
+    },
+    /**
+     * Rejects associated `promise` with a given `reason`, unless it's already
+     * resolved / rejected.
+     */
+    reject: function reject(reason) {
+      deferred.resolve(rejection(reason))
+    }
+  }
+
   return deferred
 }
+exports.defer = defer
 
-exports.future = future
-function future(value) {
-  /**
-  Returned a promise resolved with a given `value`. This is just a simpler API
-  for representing `values` via promise API.
-  **/
-
+/**
+ * Returns a promise that resolves to a given `value`.
+ */
+function promise(value) {
   var deferred = defer()
   deferred.resolve(value)
   return deferred.promise
 }
-
 exports.promise = promise
-function promise(task, value) {
-  /**
-  Returns an object implementing promise like API that resolves to `task(value)`
-  each time `then` of returned value is called.
 
-  ## examples
-
-  var async = promise(function() {
-    var deferred = defer()
-    setTimeout(deferred.resolve, 1000, Stream.of('hello', 'world'))
-    return deferred.promise
-  })
-
-  // will print in 1000ms
-  print(async)         // <stream hello world />
-  **/
-
-  return {
-    then: function then(resolve, reject) {
-      return future(task(value)).then(resolve, reject)
-    }
-  }
+/**
+ * Returned a promise that immediately resolves to `task(options)` or
+ * rejects on exception.
+ */
+function future(task, options) { return promise(options).then(task) }
+/**
+ * Returned a promise that resolves to `task(options)` or
+ * rejects on exception, but unlike `future` does this on demand.
+ */
+future.lazy = function lazyfuture(task, options) {
+  var result
+  return { then: function then(resolve, reject) {
+    result = future(task, options)
+    return result.then(resolve, reject)
+  }}
 }
+exports.future = future
+
 
 exports.run = run
 function run(task) {
@@ -245,8 +258,8 @@ function Stream(head, tail) {
   **/
   tail = tail || Stream.empty
   var stream = { head: head }
-  stream.tail = Promise.isPromise(tail) ? tail : promise(tail, stream)
-  return future(stream)
+  stream.tail = isPromise(tail) ? tail : future.lazy(tail, stream)
+  return promise(stream)
 }
 
 Stream.error = function error(reason) {
@@ -266,7 +279,7 @@ Stream.error = function error(reason) {
 /**
 Empty stream. Empty stream resolves to `null`.
 **/
-Stream.empty = future(null)
+Stream.empty = promise(null)
 
 exports.repeat = repeat
 function repeat(value) {
@@ -342,7 +355,7 @@ function capture(f, stream) {
   print(source)                 // <stream 1 2 3 4 -1 />
   **/
 
-  return promise(function() {
+  return future.lazy(function() {
     return stream.then(function(stream) {
       return stream && Stream(stream.head, capture(f, stream.tail))
     }, f)
@@ -359,7 +372,7 @@ function finalize(f, stream) {
   `f` from being called.
   **/
 
-  return promise(function() {
+  return future.lazy(function() {
     return stream.then(function(stream) {
       return stream ? Stream(stream.head, finalize(f, stream.tail)) : f()
     }, f)
@@ -401,7 +414,7 @@ function alter(f, stream) {
   var ab = append(Stream.of(1, 2, 3), Stream.of(4, 5, 6, 7))
   print(ab)                 // <stream 1 2 3 4 5 6 7 />
   **/
-  return promise(function() { return stream.then(f) })
+  return future.lazy(function() { return stream.then(f) })
 }
 
 exports.edit = edit
@@ -623,7 +636,7 @@ function filter(f, stream) {
 
 exports.reduce = reduce
 function reduce(f, stream, initial) {
-  return promise(function(result) {
+  return future.lazy(function(result) {
     var deferred = defer()
     function accumulate(stream) {
       if (!stream) return deferred.resolve(Stream.of(result))
@@ -654,7 +667,7 @@ function zip(first, second) {
      // [ 'b', 2, '@' ]
      // [ 'c', 3, '#' ]
   **/
-  return promise(function() {
+  return future.lazy(function() {
     var future = second.then()
     return capture(function(reason) {
       return alter(function(stream) {
@@ -734,7 +747,7 @@ function mix(source, rest) {
   print(mix(delay(Stream.of(1, 2)), Stream.of(3, 4)))  // <stream 3 4 1 2 />
   **/
   rest = rest || Stream.empty
-  return promise(function() {
+  return future.lazy(function() {
     var pending = [ defer(), defer() ]
     var first = pending[0].promise
     var last = pending[1].promise
@@ -803,7 +816,7 @@ function lazy(stream) {
   **/
 
   var value
-  return promise(function() {
+  return future.lazy(function() {
     return value = value || stream.then(function(stream) {
       return stream && Stream(stream.head, lazy(stream.tail))
     })
