@@ -14,7 +14,7 @@ var streamer = require('../core'), Stream = streamer.Stream,
 exports.Assert = require('./assert').Assert
 exports['test map empty'] = function(expect, complete) {
   var actual = map(function(element) {
-    test.fail('map fn was executed')
+    expect.test.fail('map fn was executed')
   }, Stream.empty)
   expect(actual).to.be.empty().then(complete)
 }
