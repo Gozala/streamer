@@ -226,7 +226,7 @@ run.on = function runon(stream) {
   **/
   return run(function task() { return stream })
 }
-run.index = ':streamer:curry-index'
+run.index = ':this-index'
 
 exports.Stream = Stream
 function Stream(head, tail) {
