@@ -1,5 +1,5 @@
 /* vim:set ts=2 sw=2 sts=2 expandtab */
-/*jshint asi: true newcap: true undef: true es5: true node: true devel: true
+/*jshint asi: true newcap: false undef: true es5: true node: true devel: true
          forin: true */
 /*global define: true setTimeout: true */
 
@@ -50,26 +50,22 @@ exports['test async finilize'] = function(expect, complete) {
   })
 }
 
-exports['test errors can be fixed'] = function(expect, complete) {
-  var boom = Error('Boom!')
-  var actual = finalize(function(error) {
-    return Stream.of(error)
-  }, append(Stream.of(1, 2), Stream.error(boom)))
-
-  expect(actual).to.have.items(1, 2, boom).then(complete)
-}
-
-exports['test errors can be ignored'] = function(expect, complete) {
-  var called = 0
+exports['test errors propagate'] = function(expect, complete) {
   var boom = Error('Boom!')
   var actual = finalize(function() {
-    called = called + 1
+    return Stream.of(3, 4)
+  }, append(Stream.of(1, 2), Stream.error(boom)))
+
+  expect(actual).to.have.items(1, 2, 3, 4).and.error(boom).then(complete)
+}
+
+exports['test finilazed may introduce errors'] = function(expect, complete) {
+  var boom = Error('Boom!'), brax = Error('BraxXXx!!')
+  var actual = finalize(function() {
+    return append(Stream.of('!'), Stream.error(brax))
   }, append(Stream.from('hi'), Stream.error(boom)))
 
-  expect(actual).to.have.items('h', 'i').then(function(assert) {
-    assert.equal(called, 1, 'finilizer was called')
-    complete()
-  })
+  expect(actual).to.be('h', 'i', '!').with.error(brax).then(complete)
 }
 
 if (module == require.main)
