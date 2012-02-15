@@ -7,8 +7,49 @@
 
 'use strict';
 
-var core = require('./core'),
-    map = core.map, merge = core.merge, list = core.list, append = core.append
+var streamer = require('./core'), Stream = streamer.Stream,
+    map = streamer.map, merge = streamer.merge, append = streamer.append,
+    tail = streamer.tail, defer = streamer.defer
+
+var unbind = Function.call.bind(Function.bind, Function.call)
+var slice = unbind(Array.prototype.slice)
+var forward = Math.floor(Math.random() * 100000000000000000)
+
+function queue() {
+  /**
+  Creates a queue.
+  **/
+  return Object.create(queue.prototype, {
+    next: { value: defer(), writable: true }
+  })
+}
+queue.prototype.then = function then(resolve, reject) {
+  return this.next.promise.then(resolve, reject)
+}
+
+function enqueue(item1, item2, item3, queue) {
+  /**
+  enqueues given item into a given queue.
+  **/
+  var items = slice(arguments)
+  queue = items.pop()
+  var current = queue.next
+  queue.next = defer()
+  current.resolve(append(Stream.from(items), queue.next.promise))
+}
+
+function close(queue) {
+  /**
+  closes given queue
+  **/
+  queue.next.resolve(Stream.empty)
+}
+
+function receive(n, queue) {
+  each(function(item) { enqueue(item, queue) }, take(n, queue))
+}
+
+
 
 function tree(isBranch, children, root) {
   /**
