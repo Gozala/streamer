@@ -457,17 +457,19 @@ exports.print = (function(fallback) {
     @param {Function} [write]
     **/
     write = write || fallback
-    setTimeout(function() {
-      stream.then(function(stream) {
+    stream.then(function(stream) {
+      setTimeout(function() {
         if (!continuation) write('<stream')
         if (!stream) return write(' />')
         write('', stream.head)
         print(stream.tail, write, true)
-      }, function(reason) {
+      }, 1)
+    }, function(reason) {
+      setTimeout(function() {
         if (!continuation) write('<stream')
         write('', '/' + reason + '>')
-      })
-    }, 1)
+      }, 1)
+    })
   }
 })()
 exports.print[run.index] = 0
