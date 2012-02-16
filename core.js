@@ -75,7 +75,6 @@ function isPromise(value) {
   return value && typeof(value.then) === 'function'
 }
 
-
 function defer(prototype) {
   /**
   Returns object containing following properties:
@@ -188,15 +187,14 @@ function future(task, options) { return promise(options).then(task) }
  * Returned a promise that resolves to `task(options)` or
  * rejects on exception, but unlike `future` does this on demand.
  */
-future.lazy = function lazyfuture(task, options) {
+function lazy(task, options) {
   var result
   return { then: function then(resolve, reject) {
     result = result || future(task, options)
     return result.then(resolve, reject)
   }}
 }
-exports.future = future
-
+exports.lazy = lazy
 
 exports.run = run
 function run(task) {
@@ -255,7 +253,7 @@ function Stream(head, tail) {
   **/
   tail = tail || Stream.empty
   var stream = { head: head }
-  stream.tail = isPromise(tail) ? tail : future.lazy(tail, stream)
+  stream.tail = isPromise(tail) ? tail : lazy(tail, stream)
   return promise(stream)
 }
 
@@ -352,7 +350,7 @@ function capture(f, stream) {
   print(source)                 // <stream 1 2 3 4 -1 />
   **/
 
-  return future.lazy(function() {
+  return lazy(function() {
     return stream.then(function(stream) {
       return stream && Stream(stream.head, capture(f, stream.tail))
     }, f)
@@ -371,7 +369,7 @@ function finalize(f, stream) {
 
   return append(capture(function(error) {
     return append(future(f), Stream.error(error))
-  }, stream), future.lazy(f))
+  }, stream), lazy(f))
 }
 
 exports.alter = alter
@@ -409,7 +407,7 @@ function alter(f, stream) {
   var ab = append(Stream.of(1, 2, 3), Stream.of(4, 5, 6, 7))
   print(ab)                 // <stream 1 2 3 4 5 6 7 />
   **/
-  return future.lazy(function() { return stream.then(f) })
+  return lazy(function() { return stream.then(f) })
 }
 
 exports.edit = edit
@@ -639,7 +637,7 @@ function reduce(f, stream, initial) {
     return x + y
   }, Stream.of(1, 2, 3), 0) // <stream 6 />
   **/
-  return future.lazy(function(result) {
+  return lazy(function(result) {
     var deferred = defer()
     function accumulate(stream) {
       if (!stream) return deferred.resolve(Stream.of(result))
@@ -670,7 +668,7 @@ function zip(first, second) {
      // [ 'b', 2, '@' ]
      // [ 'c', 3, '#' ]
   **/
-  return future.lazy(function() {
+  return lazy(function() {
     var future = second.then()
     return capture(function(reason) {
       return alter(function(stream) {
@@ -750,7 +748,7 @@ function mix(source, rest) {
   print(mix(delay(Stream.of(1, 2)), Stream.of(3, 4)))  // <stream 3 4 1 2 />
   **/
   rest = rest || Stream.empty
-  return future.lazy(function() {
+  return lazy(function() {
     var pending = [ defer(), defer() ]
     var first = pending[0].promise
     var last = pending[1].promise
@@ -804,26 +802,6 @@ function delay(ms, stream) {
     setTimeout(deferred.resolve, ms, Stream(stream.head, delay(ms, stream.tail)))
     return deferred.promise
   }, stream) : delay(1, ms)
-}
-
-exports.lazy = lazy
-function lazy(stream) {
-  /**
-  Returns an equivalent to a given `stream`, with a difference that returned
-  stream will cache it's items on demand. This will boost subsequent reads,
-  but it may have side effect of high memory usage since all items will be
-  cached into memory. This function is useful for expensive computations (that
-  require network access for example). On the other holding reference to a
-  lazy infinite stream is not a good idea, unless it's never going to be read
-  completely.
-  **/
-
-  var value
-  return future.lazy(function() {
-    return value = value || stream.then(function(stream) {
-      return stream && Stream(stream.head, lazy(stream.tail))
-    })
-  })
 }
 
 exports.each = each
