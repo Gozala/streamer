@@ -320,7 +320,7 @@ Stream.from = function from(value) {
   print(Stream.from('hello'))          // <stream h e l l o />
   **/
   return !value.length ? Stream.empty : Stream(value[0], function rest() {
-    return Stream.from(Array.prototype.slice.call(value, 1))
+    return Stream.from(slice(value, 1))
   })
 }
 
@@ -444,7 +444,7 @@ exports.print = (function(fallback) {
   // to avoid line breaks that `console.log` uses. If there is no `process`
   // then fallback to `console.log`.
   fallback = typeof(process) !== 'undefined' ? function write() {
-    process.stdout.write(Array.prototype.slice.call(arguments).join(' '))
+    process.stdout.write(slice(arguments).join(' '))
   } : console.log.bind(console)
 
   return function print(stream, write, continuation) {
