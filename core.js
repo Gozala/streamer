@@ -382,7 +382,7 @@ function alter(f, stream) {
   `f` to each element resolution (`[head, tail]` pair or `null` in the end).
   Each element resolution (including `null` identifying an end) is passed to
   `f` function that **must** return substitution. Which is either stream or
-  `null` (identifying end). Please not that even though `alter` returns result
+  `null` (identifying end). Please note that even though `alter` returns result
   immediately, `stream` is still altered on demand.
 
   ## Examples
@@ -457,18 +457,12 @@ exports.print = (function(fallback) {
     @param {Function} [write]
     **/
     write = write || fallback
+    if (!continuation) setTimeout(write, 1, '<stream')
     stream.then(function(stream) {
-      setTimeout(function() {
-        if (!continuation) write('<stream')
-        if (!stream) return write(' />')
-        write('', stream.head)
-        print(stream.tail, write, true)
-      }, 1)
+      setTimeout(write, 1, '', stream ? stream.head : '/>')
+      if (stream) print(stream.tail, write, true)
     }, function(reason) {
-      setTimeout(function() {
-        if (!continuation) write('<stream')
-        write('', '/' + reason + '>')
-      }, 1)
+      setTimeout(write, 1, '/', reason, '>')
     })
   }
 })()
