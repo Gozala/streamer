@@ -9,46 +9,66 @@
 
 var streamer = require('./core'), Stream = streamer.Stream,
     map = streamer.map, merge = streamer.merge, append = streamer.append,
-    tail = streamer.tail, defer = streamer.defer
+    tail = streamer.tail, defer = streamer.defer, promise = streamer.promise
 
 var unbind = Function.call.bind(Function.bind, Function.call)
 var slice = unbind(Array.prototype.slice)
 var forward = Math.floor(Math.random() * 100000000000000000)
 
-function queue() {
+function Queue() {
   /**
   Creates a queue.
   **/
-  return Object.create(queue.prototype, {
-    next: { value: defer(), writable: true }
+  var queued = [], pending = [], next = function next() {
+    var deferred = defer()
+    if (queued.length) deferred.resolve(queued.shift())
+    else pending.push(deferred)
+    return deferred.promise
+  }
+
+  return Object.create(Queue.prototype, {
+    then: { value: function then(resolve, reject) {
+      return next && next().then(resolve, reject)
+    }},
+    enqueue: { value: function enqueue(item) {
+      if (!next) return
+      if (pending.length) pending.shift().resolve(Stream(item, next))
+      else queued.push(Stream(item, next))
+    }},
+    close: { value: function close() {
+      if (!next) return
+      while (pending.length) pending.shift().resolve(next = null)
+    }}
   })
 }
-queue.prototype.then = function then(resolve, reject) {
-  return this.next.promise.then(resolve, reject)
-}
+exports.Queue = Queue
 
-function enqueue(item1, item2, item3, queue) {
-  /**
-  enqueues given item into a given queue.
-  **/
-  var items = slice(arguments)
-  queue = items.pop()
-  var current = queue.next
-  queue.next = defer()
-  current.resolve(append(Stream.from(items), queue.next.promise))
+function Channel() {
+  var next = defer(), pending = true
+  return Object.create(Channel.prototype, {
+    then: { value: function then(resolve, reject) {
+      return next.promise.then(resolve, reject)
+    }},
+    enqueue: { value: function enqueue(item) {
+      if (pending) next.resolve(Stream(item, (next = defer()).promise))
+    }},
+    close: { value: function close() {
+      pending = false
+      next.resolve(null)
+    }}
+  })
 }
+exports.Channel = Channel
 
-function close(queue) {
-  /**
-  closes given queue
-  **/
-  queue.next.resolve(Stream.empty)
+function enqueue(item, channel) {
+  channel.enqueue(item)
 }
+exports.enqueue = enqueue
 
-function receive(n, queue) {
-  each(function(item) { enqueue(item, queue) }, take(n, queue))
+function close(channel) {
+  channel.close()
 }
-
+exports.close = close
 
 
 function tree(isBranch, children, root) {
@@ -74,146 +94,6 @@ function tree(isBranch, children, root) {
 }
 exports.tree = tree
 
-function strainer(lambda, source) {
-}
-exports.strainer = strainer
-
-function pipe() {
-  var forward, reason, closed
-  return Object.defineProperties(function stream(next) {
-    forward = next
-  }, {
-    '-enqueue': {
-      value: function enqueue(element) {
-        closed = arguments.length === 0
-        if (forward) closed ? forward(reason) : forward(element, this)
-      }
-    },
-    '-close': {
-      value: function close(error) {
-        closed = true
-        reason = error
-        if (forward) forward(reason)
-      }
-    }
-  })
-}
-exports.pipe = pipe
-
-// Queue
-
-function dequeue(items, consumers, closed, tail) {
-  var readers, element
-  if (!dequeue.active) {
-    dequeue.active = true
-    if (items.length) {
-      element = items.shift()
-      readers = consumers.splice(0)
-      while (readers.length) readers.shift()(element, tail)
-    } else if (closed) {
-      readers = consumers.splice(0)
-      while (readers.length) readers.shift()()
-    }
-    dequeue.active = false
-    if ((items.length || closed) && consumers.length)
-      dequeue(items, consumers, closed, tail)
-  }
-}
-
-function queue() {
-  /**
-  @examples
-
-    use('./experimental', { reload: true })
-    q1 = queue(1, 2, 3)
-    m1 = map(function($) { return 'm1 -> ' + $ }, q1)
-    m2 = map(function($) { return 'm2 -> ' + $ }, q1)
-
-    print(m1)
-    print(m2)
-
-    enqueue(q1, 4)
-
-    enqueue(q1, 5, 6, 7)
-
-    m3 = map(function($) { return 'm3 -> ' + $ }, q1)
-    print(take(2, m3))
-
-    enqueue(q1, 8, 9, 10)
-
-    enqueue(q1)
-  **/
-
-  var error, closed, consumers = [],
-      items = Array.prototype.slice.call(arguments)
-
-  function stream(next) {
-    if (closed) return next(error)
-    consumers.push(next)
-    dequeue(items, consumers, closed, stream)
-  }
-
-  return Object.defineProperties(stream, {
-    '-enqueue': {
-      value: function enqueue() {
-        // If enqueue is called with no arguments then we close a queue.
-        // If queue is still open (not closed) we put all the arguments
-        // into it. Also we spawn dequeue process to forward all enqueued
-        // messages to the consumers.
-        closed = closed || arguments.length === 0
-        if (!closed) items.push.apply(items, arguments)
-        dequeue(items, consumers, closed, stream)
-      }
-    },
-    '-close': {
-      value: function stop(reason) {
-        // Closes down the stream optionally error reason may be provided.
-        error = reason
-        closed = true
-        dequeue(items, consumers, closed, stream)
-      }
-    }
-  })
-}
-exports.queue = queue
-
-exports.attempt = exports['try'] = attempt
-function attempt(catcher, f, stream) {
-  /**
-  Exception handling in streams may be performed by wrapping potential `stream`
-  via `attempt`. It takes optional `catcher` function performing catch clause
-  and required `f` function performing `finally` clause. This way given `stream`
-  may be repaired by substituting error with other stream using `catcher` and
-  some finalization may be done once stream reaches it's end.
-
-
-  ## Examples
-
-  via.open = function withOpen(path, exectue) {
-    return attempt(function() {
-      return fs.closer(path)
-    }, flatten(map(fs.opener(path), exectue)))
-  }
-  **/
-
-  return stream ? finalize(f, capture ? capture(catcher, stream) : stream)
-                : attempt(null, catcher, f)
-}
-
-function enqueue(queue) {
-  if (!('-enqueue' in queue)) throw Error('Can not enqueue into non-queue')
-  queue['-enqueue'].apply(queue, Array.prototype.slice.call(arguments, 1))
-}
-exports.enqueue = enqueue
-
-function close(queue, error) {
-  if (!('-close' in queue)) throw Error('Can not close non-queue')
-  queue['-close'](error)
-}
-exports.close = close
-
-// Examples
-
 exports.fibs = function(fibs) {
   return (fibs = Stream(0, Stream(1, function rest() {
     return map.all(function(a, b) { return a + b }, fibs, tail(fibs))
@@ -221,3 +101,4 @@ exports.fibs = function(fibs) {
 }
 
 });
+
