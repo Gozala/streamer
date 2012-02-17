@@ -28,6 +28,8 @@ exports['test mix'] = require('./mix')
 exports['test merge'] = require('./merge')
 exports['test reduce'] = require('./reduce')
 exports['test run'] = require('./run')
+exports['test queue'] = require('./queue')
+exports['test channel'] = require('./channel')
 
 if (module == require.main)
   require('test').run(exports)
