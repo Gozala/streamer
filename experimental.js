@@ -15,36 +15,6 @@ var unbind = Function.call.bind(Function.bind, Function.call)
 var slice = unbind(Array.prototype.slice)
 var forward = Math.floor(Math.random() * 100000000000000000)
 
-function Queue() {
-  /**
-  Creates a queue.
-  **/
-  var queued = [], pending = [], next = function next() {
-    var deferred = defer()
-    if (queued.length) deferred.resolve(queued.shift())
-    else if (pending) pending.push(deferred)
-    else deferred.resolve(null)
-    return deferred.promise
-  }
-
-  return Object.create(Queue.prototype, {
-    then: { value: function then(resolve, reject) {
-      return next().then(resolve, reject)
-    }},
-    enqueue: { value: function enqueue(item) {
-      if (!pending) return
-      if (pending.length) pending.shift().resolve(Stream(item, next))
-      else queued.push(Stream(item, next))
-    }},
-    close: { value: function close() {
-      if (!pending) return
-      while (pending.length) pending.shift().resolve(null)
-      pending = null
-    }}
-  })
-}
-exports.Queue = Queue
-
 function Stack() {
 /**
   Creates a queue.
