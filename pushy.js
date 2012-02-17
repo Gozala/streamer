@@ -47,6 +47,23 @@ function Queue() {
 }
 exports.Queue = Queue
 
+function Channel() {
+  var next = defer(), pending = true
+  return Object.create(Channel.prototype, {
+    then: { value: function then(resolve, reject) {
+      return next.promise.then(resolve, reject)
+    }},
+    enqueue: { value: function enqueue(item) {
+      if (pending) next.resolve(Stream(item, (next = defer()).promise))
+    }},
+    close: { value: function close() {
+      pending = false
+      next.resolve(null)
+    }}
+  })
+}
+exports.Channel = Channel
+
 function enqueue(item, queue) {
   queue.enqueue(item)
 }
