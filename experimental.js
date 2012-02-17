@@ -22,26 +22,57 @@ function Queue() {
   var queued = [], pending = [], next = function next() {
     var deferred = defer()
     if (queued.length) deferred.resolve(queued.shift())
-    else pending.push(deferred)
+    else if (pending) pending.push(deferred)
+    else deferred.resolve(null)
     return deferred.promise
   }
 
   return Object.create(Queue.prototype, {
     then: { value: function then(resolve, reject) {
-      return next && next().then(resolve, reject)
+      return next().then(resolve, reject)
     }},
     enqueue: { value: function enqueue(item) {
-      if (!next) return
+      if (!pending) return
       if (pending.length) pending.shift().resolve(Stream(item, next))
       else queued.push(Stream(item, next))
     }},
     close: { value: function close() {
-      if (!next) return
-      while (pending.length) pending.shift().resolve(next = null)
+      if (!pending) return
+      while (pending.length) pending.shift().resolve(null)
+      pending = null
     }}
   })
 }
 exports.Queue = Queue
+
+function Stack() {
+/**
+  Creates a queue.
+  **/
+  var queued = [], pending = [], next = function next() {
+    var deferred = defer()
+    if (queued.length) deferred.resolve(queued.shift())
+    else if (pending) pending.push(deferred)
+    else deferred.resolve(null)
+    return deferred.promise
+  }
+
+  return Object.create(Queue.prototype, {
+    then: { value: function then(resolve, reject) {
+      return next().then(resolve, reject)
+    }},
+    enqueue: { value: function enqueue(item) {
+      if (!pending) return
+      if (pending.length) pending.shift().resolve(Stream(item, next))
+      else queued.unshift(Stream(item, next))
+    }},
+    close: { value: function close() {
+      if (!pending) return
+      while (pending.length) pending.shift().resolve(null)
+      pending = null
+    }}
+  })
+}
 
 function Channel() {
   var next = defer(), pending = true
@@ -60,8 +91,13 @@ function Channel() {
 }
 exports.Channel = Channel
 
-function enqueue(item, channel) {
-  channel.enqueue(item)
+function enqueue(item, queue) {
+  queue.enqueue(item)
+}
+enqueue.all = function enqueueall(item1, item2, item3, queue) {
+  var items = slice(arguments)
+  queue = items.pop()
+  while (items.length) queue.enqueue(items.shift())
 }
 exports.enqueue = enqueue
 
