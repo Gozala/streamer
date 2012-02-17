@@ -29,7 +29,7 @@ function runAsserts(assert, assertions) {
     }
 
     if (assertion.task) assertion.task(assert)
-    setTimeout(runAsserts, 1, assert, assertions)
+    runAsserts(assert, assertions)
   }
   assertion.actual.then(function next(stream) {
     if (!stream) return stop()
