@@ -42,36 +42,39 @@ function pack(f) {
 }
 exports.utils = { reducer: reducer, pack: pack }
 
-/**
- * Returns promise that resolves to a given `value`.
- */
 function resolution(value) {
+  /**
+  Returns non-standard compliant (`then` does not returns a promise) promise
+  that resolves to a given `value`. Used just internally only.
+  **/
   return { then: function then(resolve) { resolve(value) } }
 }
 
-/**
- * Returns promise that rejects with a given `reason`.
- */
 function rejection(reason) {
+  /**
+  Returns non-standard compliant promise (`then` does not returns a promise)
+  that rejects with a given `reason`. This is used internally only.
+  **/
   return { then: function then(resolve, reject) { reject(reason) } }
 }
 
-/**
- * Returns function that delegates to `f`. If `f` throws then captures
- * error and returns promise that rejects with a thrown error.
- */
 function attempt(f) {
+  /**
+  Returns wrapper function that delegates to `f`. If `f` throws then captures
+  error and returns promise that rejects with a thrown error. Otherwise returns
+  return value. (Internal utility)
+  **/
   return function attempt(options) {
     try { return f(options) }
     catch(error) { return rejection(error) }
   }
 }
 
-/**
- * Returns true if given `value` is promise. Value is assumed to be promise if
- * it implements `then` method.
- */
 function isPromise(value) {
+  /**
+  Returns true if given `value` is promise. Value is assumed to be promise if
+  it implements `then` method.
+  **/
   return value && typeof(value.then) === 'function'
 }
 
@@ -111,7 +114,7 @@ function defer(prototype) {
   //=> 'Foo'
   */
   var pending = [], result
-  prototype = prototype === undefined ? Object.prototype : prototype
+  prototype = (prototype || prototype === null) ? prototype : Object.prototype
 
   // Create an object implementing promise API.
   var promise = Object.create(prototype, {
@@ -138,11 +141,11 @@ function defer(prototype) {
 
   var deferred = {
     promise: promise,
-    /**
-     * Resolves associated `promise` to a given `value`, unless it's already
-     * resolved or rejected.
-     */
     resolve: function resolve(value) {
+      /**
+      Resolves associated `promise` to a given `value`, unless it's already
+      resolved or rejected.
+      **/
       if (pending) {
         // store resolution `value` as a promise (`value` itself may be a
         // promise), so that all subsequent listeners can be forwarded to it,
@@ -155,11 +158,11 @@ function defer(prototype) {
         pending = null
       }
     },
-    /**
-     * Rejects associated `promise` with a given `reason`, unless it's already
-     * resolved / rejected.
-     */
     reject: function reject(reason) {
+      /**
+      Rejects associated `promise` with a given `reason`, unless it's already
+      resolved / rejected.
+      **/
       deferred.resolve(rejection(reason))
     }
   }
@@ -168,31 +171,40 @@ function defer(prototype) {
 }
 exports.defer = defer
 
-/**
- * Returns a promise that resolves to a given `value`.
- */
-function promise(value) {
-  var deferred = defer()
+function promise(value, prototype) {
+  /**
+  Returns a promise resolved to a given `value`. Optionally second `prototype`
+  arguments my be provided to be used as a prototype for a returned promise.
+  **/
+  var deferred = defer(prototype)
   deferred.resolve(value)
   return deferred.promise
 }
 exports.promise = promise
 
-/**
- * Returned a promise that immediately resolves to `task(options)` or
- * rejects on exception.
- */
-function future(task, options) { return promise(options).then(task) }
-/**
- * Returned a promise that resolves to `task(options)` or
- * rejects on exception, but unlike `future` does this on demand.
- */
-function lazy(task, options) {
+function future(f, options, prototype) {
+  /**
+  Returned a promise that immediately resolves to `f(options)` or
+  rejects on exception. If third argument optional `prototype` is
+  provided it will be used as prototype for a return promise.
+  **/
+  return promise(options, prototype).then(f)
+}
+exports.future = future
+
+function lazy(f, options, prototype) {
+  /**
+  This is just like future with a difference that it will call `f` on demand
+  deferring this until (if ever) `then` of the returned promise is called.
+  **/
   var result
-  return { then: function then(resolve, reject) {
-    result = result || future(task, options)
-    return result.then(resolve, reject)
-  }}
+  prototype = (prototype || prototype === null) ? prototype : Object.prototype
+  return Object.create(prototype, {
+    then: { value: function then(resolve, reject) {
+      result = result || future(f, options)
+      return result.then(resolve, reject)
+    }}
+  })
 }
 exports.lazy = lazy
 
