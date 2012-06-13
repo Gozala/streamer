@@ -741,6 +741,16 @@ function flatten(stream) {
   }, stream)
 }
 
+function expand(f, stream) {
+  /**
+  Takes `stream` and expands each item in it using given `f` by returning a
+  stream of expansion elements. This is just a convenience shortcut for
+  `flatten(map(f, stream))`.
+  **/
+  return flatten(map(f, stream))
+}
+exports.expand = expand;
+
 exports.mix = mix
 function mix(source, rest) {
   /**
