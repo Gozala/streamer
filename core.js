@@ -612,12 +612,13 @@ function join(source) {
     }
     !function recur(error) {
       onStop(error)
-      head(streams)(function onStream(stream) {
+      // If stream is still open and read is not interrupted, open next stream
+      !stopped && open && false !== alive && head(streams)(function onStream(stream) {
         // Increment number of open steams (twice since we decrement twice
         // once on stream close and second on slice close).
         open += 2
         stream(function onElement(element) {
-          // If steam is still open and read is not interrupted we pipe all
+          // If stream is still open and read is not interrupted we pipe all
           // elements to the reader. Otherwise we interrupt reading.
           return !stopped && open && false !== alive ?
                  alive = next(element) : false
